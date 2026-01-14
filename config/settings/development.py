@@ -8,18 +8,18 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
-# Database - Use SQLite for easy development (no PostgreSQL installation needed)
-# To use PostgreSQL, set USE_POSTGRES=True in your .env file
-USE_POSTGRES = config('USE_POSTGRES', default=False, cast=bool)
+# Database - Use PostgreSQL by default
+# To use SQLite instead, set USE_POSTGRES=False in your .env file
+USE_POSTGRES = config('USE_POSTGRES', default=True, cast=bool)
 
 if USE_POSTGRES:
-    # PostgreSQL configuration
+    # PostgreSQL configuration (default)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': config('DB_NAME', default='premium_edu_db'),
+            'NAME': config('DB_NAME', default='premium_edu_platform'),
             'USER': config('DB_USER', default='postgres'),
-            'PASSWORD': config('DB_PASSWORD', default='postgres'),
+            'PASSWORD': config('DB_PASSWORD', default='KIRAN'),
             'HOST': config('DB_HOST', default='localhost'),
             'PORT': config('DB_PORT', default='5432'),
             'ATOMIC_REQUESTS': True,
@@ -27,7 +27,7 @@ if USE_POSTGRES:
         }
     }
 else:
-    # SQLite configuration (default for development)
+    # SQLite configuration (for quick testing)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

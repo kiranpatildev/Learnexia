@@ -99,6 +99,9 @@ class ClassroomViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = super().get_queryset()
         
+        if not user.is_authenticated:
+            return queryset.none()
+        
         if user.role == 'teacher':
             return queryset.filter(teacher=user)
         elif user.role == 'student':
@@ -168,6 +171,9 @@ class ClassroomEnrollmentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         queryset = super().get_queryset()
+        
+        if not user.is_authenticated:
+            return queryset.none()
         
         if user.role == 'student':
             return queryset.filter(student=user)
