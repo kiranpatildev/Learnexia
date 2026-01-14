@@ -132,7 +132,7 @@ class ProgressReport(TimeStampedModel):
     
     # Generated data
     generated_at = models.DateTimeField(auto_now_add=True)
-    generated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='generated_reports')
+    generated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='generated_progress_reports')
     
     # Overall summary
     overall_performance = models.TextField()
