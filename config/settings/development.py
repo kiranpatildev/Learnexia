@@ -19,7 +19,7 @@ if USE_POSTGRES:
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': config('DB_NAME', default='premium_edu_platform'),
             'USER': config('DB_USER', default='postgres'),
-            'PASSWORD': config('DB_PASSWORD', default='KIRAN'),
+            'PASSWORD': config('DB_PASSWORD'),  # Must be set in .env file
             'HOST': config('DB_HOST', default='localhost'),
             'PORT': config('DB_PORT', default='5432'),
             'ATOMIC_REQUESTS': True,

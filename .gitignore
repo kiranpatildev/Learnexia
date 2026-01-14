@@ -164,8 +164,3 @@ dump.rdb
 *.pem
 *.key
 *.crt
-
-# =========================
-# Windows helper scripts (not committed)
-# =========================
-*.bat
