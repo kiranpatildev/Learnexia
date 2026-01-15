@@ -279,3 +279,69 @@ class LectureResourceSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError("File size cannot exceed 50MB")
         
         return value
+
+
+class TranscriptionSerializer(serializers.Serializer):
+    """
+    Serializer for transcription request/response
+    """
+    
+    # Response fields (read-only)
+    transcript = serializers.CharField(read_only=True)
+    word_count = serializers.IntegerField(read_only=True)
+    language = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    processing_time = serializers.FloatField(read_only=True, help_text='Time in seconds')
+    
+    # Optional request fields
+    force_regenerate = serializers.BooleanField(
+        default=False,
+        required=False,
+        help_text='Regenerate even if transcript exists'
+    )
+    language_code = serializers.CharField(
+        required=False,
+        help_text='ISO language code (e.g., en, es, fr). Auto-detect if not provided'
+    )
+    
+    def validate(self, data):
+        """
+        Validate transcription request
+        """
+        # Get lecture from context
+        lecture = self.context.get('lecture')
+        
+        if not lecture:
+            raise serializers.ValidationError("Lecture not found in context")
+        
+        # Check if lecture has audio/video file
+        if not lecture.audio_file and not lecture.video_file:
+            raise serializers.ValidationError(
+                "Lecture must have an audio or video file to generate transcript"
+            )
+        
+        # Check if file is accessible
+        media_file = lecture.audio_file or lecture.video_file
+        if not media_file:
+            raise serializers.ValidationError("Media file not found")
+        
+        try:
+            # Check file exists
+            media_file.open()
+            media_file.close()
+        except Exception as e:
+            raise serializers.ValidationError(f"Cannot access media file: {str(e)}")
+        
+        return data
+
+
+class TranscriptStatusSerializer(serializers.Serializer):
+    """
+    Serializer for transcript status response
+    """
+    status = serializers.CharField(help_text='not_started, pending, processing, completed, failed')
+    has_transcript = serializers.BooleanField()
+    word_count = serializers.IntegerField()
+    generated_at = serializers.DateTimeField(allow_null=True)
+    error = serializers.CharField(allow_null=True)
+    transcript_preview = serializers.CharField(allow_null=True, help_text='First 200 characters')

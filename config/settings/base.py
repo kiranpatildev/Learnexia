@@ -284,3 +284,33 @@ LOGGING = {
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+
+# ============================================================================
+# AI SERVICES CONFIGURATION
+# ============================================================================
+
+# AI Transcription Provider
+AI_TRANSCRIPTION_PROVIDER = config('AI_TRANSCRIPTION_PROVIDER', default='whisper')
+
+# OpenAI Configuration
+OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+OPENAI_ORG_ID = config('OPENAI_ORG_ID', default='')
+
+# AssemblyAI Configuration (backup provider)
+ASSEMBLYAI_API_KEY = config('ASSEMBLYAI_API_KEY', default='')
+
+# Transcription Settings
+TRANSCRIPTION_MAX_FILE_SIZE = 200 * 1024 * 1024  # 200 MB
+TRANSCRIPTION_CHUNK_SIZE = 24 * 1024 * 1024  # 24 MB chunks for large files
+TRANSCRIPTION_SUPPORTED_FORMATS = ['mp3', 'mp4', 'wav', 'webm', 'm4a', 'flac', 'mpeg']
+TRANSCRIPTION_WHISPER_MODEL = 'whisper-1'  # OpenAI Whisper model
+
+# Celery Configuration (for async AI tasks)
+CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max for AI tasks

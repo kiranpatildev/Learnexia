@@ -320,6 +320,228 @@ class LectureViewSet(viewsets.ModelViewSet):
         
         serializer = LectureViewSerializer(lecture_view)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
+    def generate_transcript(self, request, pk=None):
+        """
+        Generate transcript from lecture audio/video using AI
+        
+        Endpoint: POST /api/v1/lectures/{id}/generate_transcript/
+        
+        Request Body (optional):
+        {
+            "force_regenerate": false,  // Regenerate even if exists
+            "language_code": "en"       // ISO language code
+        }
+        
+        Response (Success - Sync):
+        {
+            "status": "success",
+            "message": "Transcript generated successfully",
+            "data": {
+                "transcript": "Full transcript text...",
+                "word_count": 1234,
+                "language": "en",
+                "processing_time": 45.2
+            }
+        }
+        
+        Response (Processing - Async):
+        {
+            "status": "processing",
+            "message": "Transcription started. Check back in a few minutes.",
+            "task_id": "abc123..."
+        }
+        
+        Response (Error):
+        {
+            "status": "error",
+            "message": "No audio/video file found for this lecture",
+            "code": "NO_MEDIA_FILE"
+        }
+        """
+        from .serializers import TranscriptionSerializer
+        from .ai_services.transcription import TranscriptionService
+        from .ai_services.config import AIConfig
+        from .tasks import transcribe_lecture_async
+        
+        lecture = self.get_object()
+        
+        # Ensure teacher owns this lecture
+        if lecture.teacher != request.user:
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'You can only generate transcripts for your own lectures',
+                    'code': 'PERMISSION_DENIED'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate request
+        serializer = TranscriptionSerializer(data=request.data, context={'lecture': lecture})
+        serializer.is_valid(raise_exception=True)
+        
+        force_regenerate = serializer.validated_data.get('force_regenerate', False)
+        
+        # Check if transcript already exists
+        if lecture.transcript and not force_regenerate:
+            word_count = len(lecture.transcript.split())
+            return Response({
+                'status': 'success',
+                'message': 'Transcript already exists. Use force_regenerate=true to regenerate.',
+                'data': {
+                    'transcript': lecture.transcript,
+                    'word_count': word_count,
+                    'language': 'en',
+                    'processing_time': 0
+                }
+            })
+        
+        # Check if media file exists
+        if not lecture.audio_file and not lecture.video_file:
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'No audio or video file found for this lecture',
+                    'code': 'NO_MEDIA_FILE'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get file size
+        media_file = lecture.audio_file or lecture.video_file
+        file_size = media_file.size
+        
+        # Check file size limits
+        if file_size > AIConfig.MAX_FILE_SIZE:
+            max_size_mb = AIConfig.MAX_FILE_SIZE / (1024 * 1024)
+            return Response(
+                {
+                    'status': 'error',
+                    'message': f'File size exceeds maximum limit of {max_size_mb:.0f} MB',
+                    'code': 'FILE_TOO_LARGE'
+                },
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+            )
+        
+        # Decide: sync or async processing
+        # Files < 25MB: process synchronously
+        # Files >= 25MB: queue async task
+        if file_size < AIConfig.WHISPER_API_LIMIT:
+            # Process synchronously
+            try:
+                lecture.transcript_status = 'processing'
+                lecture.save(update_fields=['transcript_status'])
+                
+                service = TranscriptionService()
+                result = service.transcribe_lecture(lecture)
+                
+                if result['success']:
+                    lecture.transcript = result['transcript']
+                    lecture.has_auto_generated_transcript = True
+                    lecture.transcript_status = 'completed'
+                    lecture.save(update_fields=['transcript', 'has_auto_generated_transcript', 'transcript_status'])
+                    
+                    return Response({
+                        'status': 'success',
+                        'message': 'Transcript generated successfully',
+                        'data': {
+                            'transcript': result['transcript'],
+                            'word_count': result['word_count'],
+                            'language': result['language'],
+                            'processing_time': result['processing_time']
+                        }
+                    })
+                else:
+                    lecture.transcript_status = 'failed'
+                    lecture.save(update_fields=['transcript_status'])
+                    
+                    return Response(
+                        {
+                            'status': 'error',
+                            'message': f'Transcription failed: {result["error"]}',
+                            'code': 'TRANSCRIPTION_FAILED'
+                        },
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                    )
+            
+            except Exception as e:
+                lecture.transcript_status = 'failed'
+                lecture.save(update_fields=['transcript_status'])
+                
+                return Response(
+                    {
+                        'status': 'error',
+                        'message': f'Transcription error: {str(e)}',
+                        'code': 'TRANSCRIPTION_ERROR'
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        else:
+            # Queue async task for large files
+            lecture.transcript_status = 'pending'
+            lecture.save(update_fields=['transcript_status'])
+            
+            task = transcribe_lecture_async.delay(str(lecture.id))
+            
+            return Response({
+                'status': 'processing',
+                'message': 'Transcription started. This may take several minutes for large files.',
+                'task_id': task.id,
+                'check_status_url': f'/api/v1/lectures/{lecture.id}/transcript_status/'
+            }, status=status.HTTP_202_ACCEPTED)
+    
+    @action(detail=True, methods=['get'])
+    def transcript_status(self, request, pk=None):
+        """
+        Check transcription status
+        
+        Endpoint: GET /api/v1/lectures/{id}/transcript_status/
+        
+        Response:
+        {
+            "status": "completed",  // not_started, pending, processing, completed, failed
+            "has_transcript": true,
+            "word_count": 1234,
+            "generated_at": "2024-01-15T10:30:00Z",
+            "error": null,  // or error message if failed
+            "transcript_preview": "First 200 characters..."
+        }
+        """
+        from .serializers import TranscriptStatusSerializer
+        
+        lecture = self.get_object()
+        
+        # Determine status
+        if not lecture.audio_file and not lecture.video_file:
+            transcript_status = 'not_started'
+        elif lecture.transcript:
+            transcript_status = 'completed'
+        elif lecture.transcript_status:
+            transcript_status = lecture.transcript_status
+        else:
+            transcript_status = 'pending'
+        
+        # Calculate word count
+        word_count = len(lecture.transcript.split()) if lecture.transcript else 0
+        
+        # Get preview
+        transcript_preview = None
+        if lecture.transcript:
+            transcript_preview = lecture.transcript[:200] + ('...' if len(lecture.transcript) > 200 else '')
+        
+        data = {
+            'status': transcript_status,
+            'has_transcript': bool(lecture.transcript),
+            'word_count': word_count,
+            'generated_at': lecture.updated_at if lecture.transcript else None,
+            'error': None,  # TODO: Store error messages
+            'transcript_preview': transcript_preview
+        }
+        
+        serializer = TranscriptStatusSerializer(data)
+        return Response(serializer.data)
 
 
 class LectureBookmarkViewSet(viewsets.ModelViewSet):

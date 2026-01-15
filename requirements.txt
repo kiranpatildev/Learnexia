@@ -40,6 +40,16 @@ pandas==2.1.4
 # Email
 # django-ses==3.5.2  # Commented out - optional, uncomment if using AWS SES
 
+# AI Services
+openai==1.6.1                 # OpenAI Whisper API & GPT
+assemblyai==0.17.0            # AssemblyAI (alternative transcription)
+requests==2.31.0              # HTTP requests for AI APIs
+
+# Audio/Video Processing
+ffmpeg-python==0.2.0          # Extract audio from video
+pydub==0.25.1                 # Audio manipulation
+# moviepy==1.0.3              # Video processing (alternative, heavy dependency)
+
 # Monitoring & Logging
 sentry-sdk==1.40.0
 django-debug-toolbar==4.2.0
