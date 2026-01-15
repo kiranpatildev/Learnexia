@@ -976,6 +976,152 @@ class LectureViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
+    def generate_flashcards(self, request, pk=None):
+        """
+        Generate AI-powered flashcards from approved lecture transcript
+        
+        Endpoint: POST /api/v1/lectures/{id}/generate_flashcards/
+        
+        Request Body:
+        {
+            "card_type": "DEFINITION" | "CONCEPT" | "MIXED" | "FORMULA" | "APPLICATION",
+            "style": "CONCISE" | "DETAILED",
+            "count": 10 | 20 | 30 | 40 | 50 | "auto"
+        }
+        
+        Card Types:
+        - DEFINITION: Key terminology and definitions
+        - CONCEPT: Understanding processes and relationships
+        - FORMULA: Mathematical formulas and equations
+        - APPLICATION: Real-world usage and problem-solving
+        - MIXED: Balanced mix (40% def, 30% concept, 15% formula, 15% app)
+        
+        Styles:
+        - CONCISE: Quick review (20-40 words, 5-10 word questions)
+        - DETAILED: Deep understanding (40-80 words, includes context)
+        
+        Response (Success):
+        {
+            "success": true,
+            "message": "Flashcards generated successfully!",
+            "flashcards": [
+                {
+                    "question": "What is photosynthesis?",
+                    "answer": "The process by which...",
+                    "category": "Definition"
+                }
+            ],
+            "count": 25,
+            "type": "MIXED",
+            "style": "CONCISE"
+        }
+        
+        Response (Error):
+        {
+            "success": false,
+            "message": "Transcript not approved yet",
+            "error_code": "TRANSCRIPT_NOT_APPROVED"
+        }
+        """
+        from apps.flashcards.ai_services.flashcard_generator import FlashcardGeneratorService
+        from apps.flashcards.serializers import FlashcardGenerationRequestSerializer
+        
+        lecture = self.get_object()
+        
+        # Validate permissions (only teacher who owns lecture)
+        if lecture.teacher != request.user:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'You can only generate flashcards for your own lectures',
+                    'error_code': 'PERMISSION_DENIED'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate request data
+        serializer = FlashcardGenerationRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Invalid request data',
+                    'error_code': 'INVALID_REQUEST',
+                    'errors': serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        validated_data = serializer.validated_data
+        card_type = validated_data.get('card_type', 'MIXED')
+        style = validated_data.get('style', 'CONCISE')
+        count = validated_data.get('count', 'auto')
+        
+        # Check prerequisites
+        if not lecture.transcript:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'No transcript available. Please add lecture content first.',
+                    'error_code': 'EMPTY_TRANSCRIPT'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not lecture.transcript_approved_by_teacher:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Transcript must be approved before generating flashcards. Use the approve_transcript endpoint first.',
+                    'error_code': 'TRANSCRIPT_NOT_APPROVED'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Generate flashcards using AI service
+        try:
+            service = FlashcardGeneratorService()
+            result = service.generate_flashcards(
+                lecture=lecture,
+                card_type=card_type,
+                style=style,
+                count=count
+            )
+            
+            if not result['success']:
+                return Response(
+                    {
+                        'success': False,
+                        'message': result.get('error', 'Failed to generate flashcards'),
+                        'error_code': 'GENERATION_FAILED'
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            logger.info(f"✅ Flashcards generated for lecture {lecture.id}: {result['count']} cards ({card_type}, {style})")
+            
+            # Return success response
+            return Response({
+                'success': True,
+                'message': f'{result["count"]} flashcards generated successfully!',
+                'flashcards': result['flashcards'],
+                'count': result['count'],
+                'type': card_type,
+                'style': style
+            }, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            logger.error(f"Flashcard generation error: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    'success': False,
+                    'message': f'An error occurred while generating flashcards: {str(e)}',
+                    'error_code': 'GENERATION_ERROR'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 
