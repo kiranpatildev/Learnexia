@@ -1,0 +1,21 @@
+# ============================================================================
+# HEAVY ML DEPENDENCIES - INSTALL SEPARATELY WHEN READY
+# ============================================================================
+# These are ONLY needed for local Whisper transcription
+# Install when you're ready to test transcription: pip install -r requirements-ml.txt
+
+# PyTorch (CPU version - ~2GB download)
+torch==2.1.2
+torchaudio==2.1.2
+
+# Local Whisper
+openai-whisper==20231117
+
+# ============================================================================
+# INSTALLATION INSTRUCTIONS
+# ============================================================================
+# 1. Install base requirements first: pip install -r requirements.txt
+# 2. When ready for transcription: pip install -r requirements-ml.txt
+# 3. Or install specific version:
+#    - CPU only: pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+#    - GPU (CUDA): pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118

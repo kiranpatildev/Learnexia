@@ -4,16 +4,16 @@ djangorestframework==3.14.0
 django-cors-headers==4.3.0
 django-filter==23.3
 
-# Database - Using newer version that works better on Windows
-psycopg2-binary==2.9.10
+# Database - Using binary version for Windows
+psycopg2-binary==2.9.9
 
 # Authentication & Security
 djangorestframework-simplejwt==5.3.0
 django-allauth==0.57.0
 python-decouple==3.8
 
-# File handling - Updated Pillow version
-Pillow==10.3.0
+# File handling - Latest stable version
+Pillow==11.0.0
 python-magic-bin==0.4.14
 
 # API Documentation
@@ -35,21 +35,21 @@ reportlab==4.1.0
 
 # Excel/CSV
 openpyxl==3.1.2
-pandas==2.1.4
+# pandas==2.2.0  # Not currently used, add when implementing Excel exports in Reports
 
 # Email
 # django-ses==3.5.2  # Commented out - optional, uncomment if using AWS SES
 
-# AI Services - LOCAL ONLY (Privacy-First)
-openai-whisper==20231117      # Local Whisper transcription (NO API, runs on-prem)
-torch==2.1.2                  # PyTorch for Whisper model
-torchaudio==2.1.2             # Audio processing for PyTorch
-google-generativeai==0.3.2    # Gemini API (text-only, teacher-approved content)
+# AI Services - Gemini API (Text-Only, Teacher-Approved Content)
+google-generativeai==0.3.2    # Gemini API for notes, flashcards, quizzes
 
-# Audio/Video Processing
+# NOTE: Local Whisper dependencies (PyTorch, openai-whisper) are in requirements-ml.txt
+# Install separately when ready: pip install -r requirements-ml.txt
+# These are ~2GB and only needed for transcription feature
+
+# Audio/Video Processing (for FFmpeg integration)
 ffmpeg-python==0.2.0          # Extract audio from video
 pydub==0.25.1                 # Audio manipulation
-# moviepy==1.0.3              # Video processing (alternative, heavy dependency)
 
 # Monitoring & Logging
 sentry-sdk==1.40.0
