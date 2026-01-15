@@ -304,7 +304,13 @@ TRANSCRIPTION_SUPPORTED_FORMATS = ['mp3', 'mp4', 'wav', 'webm', 'm4a', 'flac', '
 # GEMINI API: Text-Only Intelligence (Teacher-Approved Content ONLY)
 # Gemini receives ONLY teacher-approved transcripts, NEVER raw audio
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
-GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-pro')
+GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-1.5-flash')  # Fast and cost-effective
+
+# Notes Generation Settings
+NOTES_MIN_TRANSCRIPT_LENGTH = 50  # Minimum characters required
+NOTES_MAX_TRANSCRIPT_LENGTH = 100000  # Maximum characters (token limit consideration)
+NOTES_DEFAULT_FORMAT = 'comprehensive'
+NOTES_ALLOWED_FORMATS = ['comprehensive', 'bullet_point', 'cornell', 'study_guide']
 
 # Celery Configuration (for local compute-heavy tasks ONLY, not cloud retries)
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')

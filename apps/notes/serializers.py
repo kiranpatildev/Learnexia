@@ -182,3 +182,94 @@ class StudentPersonalNoteSerializer(serializers.ModelSerializer):
         model = StudentPersonalNote
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at', 'student']
+
+
+# ============================================================================
+# AI NOTES GENERATION SERIALIZERS
+# ============================================================================
+
+class NotesGenerationRequestSerializer(serializers.Serializer):
+    """
+    Serializer for AI notes generation request
+    """
+    
+    note_format = serializers.ChoiceField(
+        choices=['comprehensive', 'bullet_point', 'cornell', 'study_guide'],
+        default='comprehensive',
+        help_text='Format style for generated notes'
+    )
+    
+    force_regenerate = serializers.BooleanField(
+        default=False,
+        help_text='Regenerate notes even if they already exist'
+    )
+    
+    auto_publish = serializers.BooleanField(
+        default=False,
+        help_text='Automatically publish notes after generation (not recommended - review first)'
+    )
+    
+    def validate(self, data):
+        """Validate generation request"""
+        # Ensure auto_publish is used cautiously
+        if data.get('auto_publish') and not data.get('force_regenerate'):
+            # Allow auto_publish only for new notes or forced regeneration
+            pass
+        return data
+
+
+class NotesGenerationResponseSerializer(serializers.Serializer):
+    """
+    Serializer for AI notes generation response
+    """
+    
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    
+    # Data fields (only if success=True)
+    note_id = serializers.UUIDField(required=False)
+    title = serializers.CharField(required=False)
+    format = serializers.CharField(required=False)
+    word_count = serializers.IntegerField(required=False)
+    preview = serializers.CharField(required=False, help_text='First 500 characters')
+    
+    # Error field (only if success=False)
+    error_code = serializers.CharField(required=False)
+
+
+class LectureNoteDetailSerializer(serializers.ModelSerializer):
+    """
+    Detailed serializer for lecture notes with AI metadata
+    """
+    
+    lecture_title = serializers.CharField(source='lecture.title', read_only=True)
+    teacher_name = serializers.CharField(source='teacher.get_full_name', read_only=True)
+    classroom_name = serializers.SerializerMethodField()
+    
+    # AI generation metadata
+    is_ai_generated = serializers.BooleanField(source='is_auto_generated', read_only=True)
+    generated_at = serializers.DateTimeField(source='auto_generated_at', read_only=True)
+    word_count = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = LectureNote
+        fields = [
+            'id', 'lecture', 'lecture_title', 'classroom', 'classroom_name',
+            'teacher', 'teacher_name', 'title', 'content', 'summary',
+            'note_format', 'is_ai_generated', 'generated_at', 'word_count',
+            'is_published', 'published_at', 'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'teacher', 'is_ai_generated', 'generated_at',
+            'created_at', 'updated_at'
+        ]
+    
+    def get_classroom_name(self, obj):
+        """Get classroom display name"""
+        return str(obj.classroom)
+    
+    def get_word_count(self, obj):
+        """Count words in content"""
+        if obj.content:
+            return len(obj.content.split())
+        return 0

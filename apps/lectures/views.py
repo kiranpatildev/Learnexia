@@ -609,6 +609,185 @@ class LectureViewSet(viewsets.ModelViewSet):
             'approved_at': lecture.transcript_approved_at,
             'word_count': len(lecture.transcript.split())
         })
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
+    def generate_notes(self, request, pk=None):
+        """
+        Generate AI-powered lecture notes from approved transcript
+        
+        Endpoint: POST /api/v1/lectures/{id}/generate_notes/
+        
+        Request Body:
+        {
+            "note_format": "comprehensive",  // or bullet_point, cornell, study_guide
+            "force_regenerate": false,
+            "auto_publish": false
+        }
+        
+        Response (Success):
+        {
+            "success": true,
+            "message": "Notes generated successfully!",
+            "note_id": "uuid-here",
+            "title": "Generated title",
+            "format": "comprehensive",
+            "word_count": 1234,
+            "preview": "First 500 characters of notes..."
+        }
+        
+        Response (Error):
+        {
+            "success": false,
+            "message": "Transcript not approved yet",
+            "error_code": "TRANSCRIPT_NOT_APPROVED"
+        }
+        """
+        from apps.notes.models import LectureNote
+        from apps.notes.ai_services.notes_generator import NotesGeneratorService
+        from apps.notes.serializers import NotesGenerationRequestSerializer
+        
+        lecture = self.get_object()
+        
+        # Validate permissions (only teacher who owns lecture)
+        if lecture.teacher != request.user:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'You can only generate notes for your own lectures',
+                    'error_code': 'PERMISSION_DENIED'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate request data
+        serializer = NotesGenerationRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Invalid request data',
+                    'error_code': 'INVALID_REQUEST',
+                    'errors': serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        validated_data = serializer.validated_data
+        note_format = validated_data.get('note_format', 'comprehensive')
+        force_regenerate = validated_data.get('force_regenerate', False)
+        auto_publish = validated_data.get('auto_publish', False)
+        
+        # Check prerequisites
+        if not lecture.transcript:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'No transcript available. Please add lecture content first.',
+                    'error_code': 'EMPTY_TRANSCRIPT'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not lecture.transcript_approved_by_teacher:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Transcript must be approved before generating notes. Use the approve_transcript endpoint first.',
+                    'error_code': 'TRANSCRIPT_NOT_APPROVED'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if notes already exist
+        try:
+            existing_note = LectureNote.objects.get(lecture=lecture)
+            if not force_regenerate:
+                return Response(
+                    {
+                        'success': False,
+                        'message': 'Notes already exist for this lecture. Use force_regenerate=true to regenerate.',
+                        'error_code': 'NOTES_EXIST',
+                        'note_id': str(existing_note.id)
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except LectureNote.DoesNotExist:
+            existing_note = None
+        
+        # Generate notes using AI service
+        try:
+            service = NotesGeneratorService()
+            result = service.generate_notes(
+                lecture=lecture,
+                note_format=note_format
+            )
+            
+            if not result['success']:
+                return Response(
+                    {
+                        'success': False,
+                        'message': result.get('error', 'Failed to generate notes'),
+                        'error_code': 'GENERATION_FAILED'
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Save to database
+            if existing_note:
+                # Update existing note
+                note = existing_note
+                note.content = result['notes_content']
+                note.title = result['title']
+                note.summary = result['summary']
+                note.note_format = note_format
+                note.is_auto_generated = True
+                note.auto_generated_at = timezone.now()
+            else:
+                # Create new note
+                note = LectureNote.objects.create(
+                    lecture=lecture,
+                    classroom=lecture.classroom,
+                    teacher=lecture.teacher,
+                    title=result['title'],
+                    content=result['notes_content'],
+                    summary=result['summary'],
+                    note_format=note_format,
+                    is_auto_generated=True,
+                    auto_generated_at=timezone.now(),
+                    is_published=auto_publish
+                )
+            
+            # Optionally publish
+            if auto_publish:
+                note.is_published = True
+                note.published_at = timezone.now()
+            
+            note.save()
+            
+            logger.info(f"✅ Notes generated for lecture {lecture.id}: {result['word_count']} words")
+            
+            # Return success response
+            return Response({
+                'success': True,
+                'message': 'Notes generated successfully! Review and publish when ready.',
+                'note_id': str(note.id),
+                'title': note.title,
+                'format': note.note_format,
+                'word_count': result['word_count'],
+                'preview': note.summary or note.content[:500]
+            }, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            logger.error(f"Notes generation error: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    'success': False,
+                    'message': f'An error occurred while generating notes: {str(e)}',
+                    'error_code': 'GENERATION_ERROR'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 
 class LectureBookmarkViewSet(viewsets.ModelViewSet):
