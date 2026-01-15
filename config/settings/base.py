@@ -286,26 +286,27 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
 # ============================================================================
-# AI SERVICES CONFIGURATION
+# AI SERVICES CONFIGURATION - PRIVACY-FIRST ARCHITECTURE
 # ============================================================================
 
-# AI Transcription Provider
-AI_TRANSCRIPTION_PROVIDER = config('AI_TRANSCRIPTION_PROVIDER', default='whisper')
-
-# OpenAI Configuration
-OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
-OPENAI_ORG_ID = config('OPENAI_ORG_ID', default='')
-
-# AssemblyAI Configuration (backup provider)
-ASSEMBLYAI_API_KEY = config('ASSEMBLYAI_API_KEY', default='')
+# TRANSCRIPTION: Local Whisper (On-Premise, Zero Cost, Privacy-Compliant)
+# Audio files NEVER leave the server - runs entirely on local CPU/GPU
+TRANSCRIPTION_MODE = config('TRANSCRIPTION_MODE', default='local')
+LOCAL_WHISPER_MODEL = config('LOCAL_WHISPER_MODEL', default='base')  # tiny, base, small, medium, large
+WHISPER_DEVICE = config('WHISPER_DEVICE', default='cpu')  # cpu or cuda
+WHISPER_COMPUTE_TYPE = config('WHISPER_COMPUTE_TYPE', default='int8')  # int8, float16, float32
 
 # Transcription Settings
-TRANSCRIPTION_MAX_FILE_SIZE = 200 * 1024 * 1024  # 200 MB
-TRANSCRIPTION_CHUNK_SIZE = 24 * 1024 * 1024  # 24 MB chunks for large files
+TRANSCRIPTION_MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB (local processing, no API limits)
+TRANSCRIPTION_CHUNK_DURATION = 30 * 60  # 30 minutes per chunk (for memory management)
 TRANSCRIPTION_SUPPORTED_FORMATS = ['mp3', 'mp4', 'wav', 'webm', 'm4a', 'flac', 'mpeg']
-TRANSCRIPTION_WHISPER_MODEL = 'whisper-1'  # OpenAI Whisper model
 
-# Celery Configuration (for async AI tasks)
+# GEMINI API: Text-Only Intelligence (Teacher-Approved Content ONLY)
+# Gemini receives ONLY teacher-approved transcripts, NEVER raw audio
+GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-pro')
+
+# Celery Configuration (for local compute-heavy tasks ONLY, not cloud retries)
 CELERY_BROKER_URL = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = config('REDIS_URL', default='redis://localhost:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
@@ -313,4 +314,4 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max for AI tasks
+CELERY_TASK_TIME_LIMIT = 60 * 60  # 60 minutes max for local transcription tasks

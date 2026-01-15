@@ -1,5 +1,8 @@
 """
-Celery tasks for async lecture transcription
+Celery tasks for LOCAL lecture transcription
+
+CRITICAL: Tasks are for compute-heavy local processing ONLY.
+NOT for cloud API retries or network reliability.
 """
 
 from celery import shared_task
@@ -9,10 +12,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=2)
 def transcribe_lecture_async(self, lecture_id):
     """
-    Async task to transcribe lecture
+    Async task for LOCAL transcription (compute-heavy)
+    
+    Used for:
+    - Long audio files (>30 minutes)
+    - Queueing heavy CPU/GPU jobs
+    - Background processing to avoid blocking requests
+    
+    NOT used for:
+    - Cloud API retries (we don't use cloud APIs)
+    - Network reliability (all processing is local)
     
     Args:
         lecture_id: UUID of the lecture to transcribe
@@ -21,7 +33,7 @@ def transcribe_lecture_async(self, lecture_id):
         dict: Transcription result
     """
     from apps.lectures.models import Lecture
-    from apps.lectures.ai_services.transcription import TranscriptionService
+    from apps.lectures.ai_services.transcription import LocalWhisperService
     from apps.notifications.views import create_notification
     
     try:
@@ -32,28 +44,32 @@ def transcribe_lecture_async(self, lecture_id):
         lecture.transcript_status = 'processing'
         lecture.save(update_fields=['transcript_status'])
         
-        logger.info(f"Starting transcription for lecture {lecture_id}")
+        logger.info(f"Starting LOCAL transcription for lecture {lecture_id}")
         
-        # Transcribe
-        service = TranscriptionService()
+        # Transcribe using LOCAL Whisper
+        service = LocalWhisperService()
         result = service.transcribe_lecture(lecture)
         
         if result['success']:
-            # Update lecture with transcript
+            # Update lecture with transcript (DRAFT - needs teacher approval)
             lecture.transcript = result['transcript']
             lecture.has_auto_generated_transcript = True
             lecture.transcript_status = 'completed'
-            lecture.save(update_fields=['transcript', 'has_auto_generated_transcript', 'transcript_status'])
+            lecture.transcript_approved_by_teacher = False  # CRITICAL: Requires approval
+            lecture.save(update_fields=[
+                'transcript', 'has_auto_generated_transcript',
+                'transcript_status', 'transcript_approved_by_teacher'
+            ])
             
-            logger.info(f"Transcription completed for lecture {lecture_id}: {result['word_count']} words")
+            logger.info(f"✅ LOCAL transcription completed for lecture {lecture_id}: {result['word_count']} words")
             
-            # Notify teacher
+            # Notify teacher (transcript needs approval)
             try:
                 create_notification(
                     recipient=lecture.teacher,
                     notification_type='system_alert',
-                    title='Lecture Transcription Complete',
-                    message=f'Transcript for "{lecture.title}" is ready ({result["word_count"]} words)',
+                    title='Lecture Transcript Ready for Review',
+                    message=f'Transcript for "{lecture.title}" is ready ({result["word_count"]} words). Please review and approve before using AI features.',
                     priority='normal',
                     reference_type='lecture',
                     reference_id=str(lecture.id),
@@ -66,14 +82,16 @@ def transcribe_lecture_async(self, lecture_id):
                 'status': 'success',
                 'lecture_id': str(lecture_id),
                 'word_count': result['word_count'],
-                'processing_time': result['processing_time']
+                'processing_time': result['processing_time'],
+                'mode': 'local',
+                'cost': 0.00
             }
         else:
             # Update status to failed
             lecture.transcript_status = 'failed'
             lecture.save(update_fields=['transcript_status'])
             
-            logger.error(f"Transcription failed for lecture {lecture_id}: {result['error']}")
+            logger.error(f"LOCAL transcription failed for lecture {lecture_id}: {result['error']}")
             
             # Notify teacher of failure
             try:
@@ -92,7 +110,8 @@ def transcribe_lecture_async(self, lecture_id):
             return {
                 'status': 'failed',
                 'lecture_id': str(lecture_id),
-                'error': result['error']
+                'error': result['error'],
+                'mode': 'local'
             }
     
     except Lecture.DoesNotExist:
@@ -104,7 +123,7 @@ def transcribe_lecture_async(self, lecture_id):
         }
     
     except Exception as exc:
-        logger.error(f"Transcription task error for lecture {lecture_id}: {str(exc)}", exc_info=True)
+        logger.error(f"LOCAL transcription task error for lecture {lecture_id}: {str(exc)}", exc_info=True)
         
         # Update lecture status
         try:
@@ -114,15 +133,16 @@ def transcribe_lecture_async(self, lecture_id):
         except:
             pass
         
-        # Retry on transient errors
+        # Retry ONLY on local compute failures (memory, disk, etc.)
+        # NOT on network failures (we don't use network for transcription)
         if self.request.retries < self.max_retries:
-            # Exponential backoff: 1min, 2min, 4min
-            countdown = 60 * (2 ** self.request.retries)
-            logger.info(f"Retrying transcription in {countdown}s (attempt {self.request.retries + 1}/{self.max_retries})")
+            countdown = 60 * (2 ** self.request.retries)  # 1min, 2min
+            logger.info(f"Retrying LOCAL transcription in {countdown}s (attempt {self.request.retries + 1}/{self.max_retries})")
             raise self.retry(exc=exc, countdown=countdown)
         
         return {
             'status': 'failed',
             'lecture_id': str(lecture_id),
-            'error': str(exc)
+            'error': str(exc),
+            'mode': 'local'
         }

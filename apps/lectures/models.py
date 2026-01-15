@@ -38,9 +38,28 @@ class Lecture(TimeStampedModel, SoftDeleteModel):
     thumbnail = models.ImageField(upload_to='lectures/thumbnails/%Y/%m/%d/', null=True, blank=True)
     duration = models.PositiveIntegerField(help_text='Duration in seconds', null=True, blank=True)
     
-    # Transcription
+    # Transcription (Local Whisper - Privacy-First)
     transcript = models.TextField(blank=True)
     has_auto_generated_transcript = models.BooleanField(default=False)
+    transcript_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('not_started', 'Not Started'),
+            ('pending', 'Pending'),
+            ('processing', 'Processing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed'),
+        ],
+        default='not_started',
+        db_index=True
+    )
+    
+    # Transcript Approval (CRITICAL: Required before Gemini processing)
+    transcript_approved_by_teacher = models.BooleanField(
+        default=False,
+        help_text='Teacher must approve transcript before AI features (notes, flashcards, quizzes) can use it'
+    )
+    transcript_approved_at = models.DateTimeField(null=True, blank=True)
     
     # Status
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft', db_index=True)

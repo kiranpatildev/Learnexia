@@ -40,10 +40,11 @@ pandas==2.1.4
 # Email
 # django-ses==3.5.2  # Commented out - optional, uncomment if using AWS SES
 
-# AI Services
-openai==1.6.1                 # OpenAI Whisper API & GPT
-assemblyai==0.17.0            # AssemblyAI (alternative transcription)
-requests==2.31.0              # HTTP requests for AI APIs
+# AI Services - LOCAL ONLY (Privacy-First)
+openai-whisper==20231117      # Local Whisper transcription (NO API, runs on-prem)
+torch==2.1.2                  # PyTorch for Whisper model
+torchaudio==2.1.2             # Audio processing for PyTorch
+google-generativeai==0.3.2    # Gemini API (text-only, teacher-approved content)
 
 # Audio/Video Processing
 ffmpeg-python==0.2.0          # Extract audio from video

@@ -425,11 +425,14 @@ class LectureViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
             )
         
-        # Decide: sync or async processing
-        # Files < 25MB: process synchronously
-        # Files >= 25MB: queue async task
-        if file_size < AIConfig.WHISPER_API_LIMIT:
-            # Process synchronously
+        # Decide: sync or async processing (based on compute load, not API limits)
+        # Short files (<30 min): process synchronously
+        # Long files (>=30 min): queue async task to avoid blocking
+        duration_threshold = 30 * 60  # 30 minutes
+        use_async = lecture.duration and lecture.duration >= duration_threshold
+        
+        if not use_async:
+            # Process synchronously (quick response)
             try:
                 lecture.transcript_status = 'processing'
                 lecture.save(update_fields=['transcript_status'])
@@ -441,16 +444,23 @@ class LectureViewSet(viewsets.ModelViewSet):
                     lecture.transcript = result['transcript']
                     lecture.has_auto_generated_transcript = True
                     lecture.transcript_status = 'completed'
-                    lecture.save(update_fields=['transcript', 'has_auto_generated_transcript', 'transcript_status'])
+                    lecture.transcript_approved_by_teacher = False  # CRITICAL: Requires approval
+                    lecture.save(update_fields=[
+                        'transcript', 'has_auto_generated_transcript',
+                        'transcript_status', 'transcript_approved_by_teacher'
+                    ])
                     
                     return Response({
                         'status': 'success',
-                        'message': 'Transcript generated successfully',
+                        'message': 'Transcript generated successfully. Please review and approve before using AI features.',
                         'data': {
                             'transcript': result['transcript'],
                             'word_count': result['word_count'],
                             'language': result['language'],
-                            'processing_time': result['processing_time']
+                            'processing_time': result['processing_time'],
+                            'mode': 'local',
+                            'cost': 0.00,
+                            'approved': False
                         }
                     })
                 else:
@@ -460,7 +470,7 @@ class LectureViewSet(viewsets.ModelViewSet):
                     return Response(
                         {
                             'status': 'error',
-                            'message': f'Transcription failed: {result["error"]}',
+                            'message': f'Local transcription failed: {result["error"]}',
                             'code': 'TRANSCRIPTION_FAILED'
                         },
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -479,7 +489,7 @@ class LectureViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
         else:
-            # Queue async task for large files
+            # Queue async task for long files (compute-heavy)
             lecture.transcript_status = 'pending'
             lecture.save(update_fields=['transcript_status'])
             
@@ -487,9 +497,11 @@ class LectureViewSet(viewsets.ModelViewSet):
             
             return Response({
                 'status': 'processing',
-                'message': 'Transcription started. This may take several minutes for large files.',
+                'message': 'Local transcription started. This may take several minutes for long files.',
                 'task_id': task.id,
-                'check_status_url': f'/api/v1/lectures/{lecture.id}/transcript_status/'
+                'check_status_url': f'/api/v1/lectures/{lecture.id}/transcript_status/',
+                'mode': 'local',
+                'cost': 0.00
             }, status=status.HTTP_202_ACCEPTED)
     
     @action(detail=True, methods=['get'])
@@ -537,11 +549,66 @@ class LectureViewSet(viewsets.ModelViewSet):
             'word_count': word_count,
             'generated_at': lecture.updated_at if lecture.transcript else None,
             'error': None,  # TODO: Store error messages
-            'transcript_preview': transcript_preview
+            'transcript_preview': transcript_preview,
+            'approved': lecture.transcript_approved_by_teacher,
+            'approved_at': lecture.transcript_approved_at
         }
         
         serializer = TranscriptStatusSerializer(data)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
+    def approve_transcript(self, request, pk=None):
+        """
+        Approve transcript for AI processing
+        
+        Endpoint: POST /api/v1/lectures/{id}/approve_transcript/
+        
+        CRITICAL: This must be called before Gemini can process the transcript.
+        Teacher reviews and approves the auto-generated transcript.
+        
+        Response:
+        {
+            "status": "success",
+            "message": "Transcript approved. AI features (notes, flashcards, quizzes) are now available.",
+            "approved_at": "2024-01-15T10:30:00Z"
+        }
+        """
+        lecture = self.get_object()
+        
+        # Ensure teacher owns this lecture
+        if lecture.teacher != request.user:
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'You can only approve transcripts for your own lectures',
+                    'code': 'PERMISSION_DENIED'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Check if transcript exists
+        if not lecture.transcript:
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'No transcript available to approve. Generate transcript first.',
+                    'code': 'NO_TRANSCRIPT'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Approve transcript
+        lecture.transcript_approved_by_teacher = True
+        lecture.transcript_approved_at = timezone.now()
+        lecture.save(update_fields=['transcript_approved_by_teacher', 'transcript_approved_at'])
+        
+        return Response({
+            'status': 'success',
+            'message': 'Transcript approved. AI features (notes, flashcards, quizzes) are now available.',
+            'approved_at': lecture.transcript_approved_at,
+            'word_count': len(lecture.transcript.split())
+        })
 
 
 class LectureBookmarkViewSet(viewsets.ModelViewSet):

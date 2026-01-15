@@ -1,5 +1,8 @@
 """
-AI provider configuration and selection for transcription
+AI provider configuration for LOCAL transcription (Privacy-First)
+
+CRITICAL: Audio files NEVER leave the server.
+Transcription runs entirely on local CPU/GPU using open-source Whisper.
 """
 
 from django.conf import settings
@@ -9,58 +12,45 @@ logger = logging.getLogger(__name__)
 
 
 class AIConfig:
-    """AI services configuration"""
+    """AI services configuration - LOCAL PROCESSING ONLY"""
     
-    # Transcription providers
-    PROVIDER_WHISPER = 'whisper'
-    PROVIDER_ASSEMBLYAI = 'assemblyai'
+    # Transcription Mode: LOCAL ONLY (no cloud providers)
+    TRANSCRIPTION_MODE = settings.TRANSCRIPTION_MODE  # Must be 'local'
     
-    # File size limits
-    MAX_FILE_SIZE = settings.TRANSCRIPTION_MAX_FILE_SIZE  # 200 MB
-    CHUNK_SIZE = settings.TRANSCRIPTION_CHUNK_SIZE  # 24 MB
-    WHISPER_API_LIMIT = 25 * 1024 * 1024  # 25 MB (Whisper API limit)
+    # Local Whisper Configuration
+    WHISPER_MODEL = settings.LOCAL_WHISPER_MODEL  # tiny, base, small, medium, large
+    WHISPER_DEVICE = settings.WHISPER_DEVICE  # cpu or cuda
+    WHISPER_COMPUTE_TYPE = settings.WHISPER_COMPUTE_TYPE  # int8, float16, float32
+    
+    # File size limits (local processing has higher limits)
+    MAX_FILE_SIZE = settings.TRANSCRIPTION_MAX_FILE_SIZE  # 500 MB
+    CHUNK_DURATION = settings.TRANSCRIPTION_CHUNK_DURATION  # 30 minutes
     
     # Supported formats
     SUPPORTED_FORMATS = settings.TRANSCRIPTION_SUPPORTED_FORMATS
     
-    # API Keys
-    OPENAI_API_KEY = settings.OPENAI_API_KEY
-    OPENAI_ORG_ID = settings.OPENAI_ORG_ID
-    ASSEMBLYAI_API_KEY = settings.ASSEMBLYAI_API_KEY
-    
-    # Provider selection
-    DEFAULT_PROVIDER = settings.AI_TRANSCRIPTION_PROVIDER
-    
-    # Whisper settings
-    WHISPER_MODEL = settings.TRANSCRIPTION_WHISPER_MODEL
+    # Gemini Configuration (Text-Only, Teacher-Approved)
+    GEMINI_API_KEY = settings.GEMINI_API_KEY
+    GEMINI_MODEL = settings.GEMINI_MODEL
     
     @classmethod
-    def get_provider(cls):
+    def validate_local_mode(cls):
         """
-        Get the configured transcription provider
-        
-        Returns:
-            str: Provider name ('whisper' or 'assemblyai')
+        Validate that transcription is configured for local processing
         
         Raises:
-            ValueError: If no provider is configured
+            ValueError: If cloud mode is detected
         """
-        provider = cls.DEFAULT_PROVIDER
+        if cls.TRANSCRIPTION_MODE != 'local':
+            raise ValueError(
+                f"TRANSCRIPTION_MODE must be 'local' for privacy compliance. "
+                f"Found: {cls.TRANSCRIPTION_MODE}"
+            )
         
-        if provider == cls.PROVIDER_WHISPER:
-            if not cls.OPENAI_API_KEY:
-                logger.warning("OpenAI API key not configured, falling back to AssemblyAI")
-                provider = cls.PROVIDER_ASSEMBLYAI
-        
-        if provider == cls.PROVIDER_ASSEMBLYAI:
-            if not cls.ASSEMBLYAI_API_KEY:
-                raise ValueError(
-                    "No transcription provider configured. "
-                    "Please set OPENAI_API_KEY or ASSEMBLYAI_API_KEY in your environment."
-                )
-        
-        logger.info(f"Using transcription provider: {provider}")
-        return provider
+        logger.info(f"✅ Transcription mode: LOCAL (Privacy-compliant)")
+        logger.info(f"✅ Whisper model: {cls.WHISPER_MODEL}")
+        logger.info(f"✅ Device: {cls.WHISPER_DEVICE}")
+        logger.info(f"✅ Audio stays on-premise")
     
     @classmethod
     def validate_file_format(cls, filename):
@@ -90,14 +80,25 @@ class AIConfig:
         return file_size <= cls.MAX_FILE_SIZE
     
     @classmethod
-    def needs_chunking(cls, file_size):
+    def get_model_info(cls):
         """
-        Check if file needs to be split into chunks
-        
-        Args:
-            file_size (int): Size of file in bytes
+        Get information about the Whisper model
         
         Returns:
-            bool: True if file should be chunked, False otherwise
+            dict: Model configuration details
         """
-        return file_size > cls.WHISPER_API_LIMIT
+        model_sizes = {
+            'tiny': '39M parameters, ~1GB RAM, fastest',
+            'base': '74M parameters, ~1GB RAM, good balance',
+            'small': '244M parameters, ~2GB RAM, better accuracy',
+            'medium': '769M parameters, ~5GB RAM, high accuracy',
+            'large': '1550M parameters, ~10GB RAM, best accuracy'
+        }
+        
+        return {
+            'model': cls.WHISPER_MODEL,
+            'device': cls.WHISPER_DEVICE,
+            'compute_type': cls.WHISPER_COMPUTE_TYPE,
+            'description': model_sizes.get(cls.WHISPER_MODEL, 'Unknown model'),
+            'mode': 'LOCAL (Privacy-First)'
+        }
