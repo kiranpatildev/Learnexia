@@ -1122,6 +1122,169 @@ class LectureViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
+    def detect_behaviors(self, request, pk=None):
+        """
+        Detect behavior events from approved lecture transcript using AI
+        
+        Endpoint: POST /api/v1/lectures/{id}/detect_behaviors/
+        
+        Request Body:
+        {
+            "sensitivity": "LOW" | "MEDIUM" | "HIGH"  // Default: MEDIUM
+        }
+        
+        Sensitivity Levels:
+        - LOW: Conservative - Only explicit, clear behavior statements
+        - MEDIUM: Balanced - Clear behavior statements (recommended)
+        - HIGH: Comprehensive - All potential behavior-related statements
+        
+        Response (Success):
+        {
+            "success": true,
+            "message": "Detected 3 behavior event(s). Pending teacher review.",
+            "detected_count": 3,
+            "pending_behaviors": [
+                {
+                    "id": 1,
+                    "student_name": "John Doe",
+                    "behavior_type": "disruption",
+                    "severity": "moderate",
+                    "description": "Student was disrupting classroom activities.",
+                    "original_statement": "John, please stop talking.",
+                    "is_positive": false,
+                    "ai_confidence": "HIGH",
+                    "status": "pending"
+                }
+            ]
+        }
+        
+        Response (Error):
+        {
+            "success": false,
+            "message": "Transcript not approved yet",
+            "error_code": "TRANSCRIPT_NOT_APPROVED"
+        }
+        
+        Note: All detected behaviors require teacher review before any action is taken.
+        """
+        from apps.behavior.models import PendingBehaviorDetection
+        from apps.behavior.ai_services.behavior_detector import BehaviorDetectionService
+        from apps.behavior.serializers import (
+            BehaviorDetectionRequestSerializer,
+            PendingBehaviorDetectionSerializer
+        )
+        
+        lecture = self.get_object()
+        
+        # Validate permissions (only teacher who owns lecture)
+        if lecture.teacher != request.user:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'You can only detect behaviors for your own lectures',
+                    'error_code': 'PERMISSION_DENIED'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate request data
+        serializer = BehaviorDetectionRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Invalid request data',
+                    'error_code': 'INVALID_REQUEST',
+                    'errors': serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        validated_data = serializer.validated_data
+        sensitivity = validated_data.get('sensitivity', 'MEDIUM')
+        
+        # Check prerequisites
+        if not lecture.transcript:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'No transcript available. Please add lecture content first.',
+                    'error_code': 'EMPTY_TRANSCRIPT'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not lecture.transcript_approved_by_teacher:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Transcript must be approved before behavior detection. Use the approve_transcript endpoint first.',
+                    'error_code': 'TRANSCRIPT_NOT_APPROVED'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Detect behaviors using AI service
+        try:
+            service = BehaviorDetectionService()
+            result = service.detect_behaviors(
+                lecture=lecture,
+                sensitivity=sensitivity
+            )
+            
+            if not result['success']:
+                return Response(
+                    {
+                        'success': False,
+                        'message': result.get('error', 'Failed to detect behaviors'),
+                        'error_code': 'DETECTION_FAILED'
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Create PendingBehaviorDetection records
+            pending_behaviors = []
+            for behavior in result['behaviors']:
+                pending = PendingBehaviorDetection.objects.create(
+                    lecture=lecture,
+                    student_name=behavior['student_name'],
+                    behavior_type=behavior['behavior_type'],
+                    severity=behavior['severity'],
+                    description=behavior['description'],
+                    original_statement=behavior['original_statement'],
+                    is_positive=behavior['is_positive'],
+                    ai_confidence=behavior['confidence'],
+                    ai_confidence_score=behavior['ai_confidence_score'],
+                    detection_sensitivity=sensitivity,
+                    status='pending'
+                )
+                pending_behaviors.append(pending)
+            
+            logger.info(f"✅ Behaviors detected for lecture {lecture.id}: {len(pending_behaviors)} events ({sensitivity} sensitivity)")
+            
+            # Serialize pending behaviors
+            pending_serializer = PendingBehaviorDetectionSerializer(pending_behaviors, many=True)
+            
+            # Return success response
+            return Response({
+                'success': True,
+                'message': f'Detected {len(pending_behaviors)} behavior event(s). Pending teacher review.',
+                'detected_count': len(pending_behaviors),
+                'pending_behaviors': pending_serializer.data
+            }, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            logger.error(f"Behavior detection error: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    'success': False,
+                    'message': f'An error occurred while detecting behaviors: {str(e)}',
+                    'error_code': 'DETECTION_ERROR'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 

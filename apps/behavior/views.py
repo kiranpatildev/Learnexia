@@ -311,3 +311,226 @@ class BehaviorStatisticsViewSet(viewsets.ReadOnlyModelViewSet):
             return BehaviorStatistics.objects.all().select_related('student', 'classroom')
         
         return BehaviorStatistics.objects.none()
+
+
+class PendingBehaviorDetectionViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for managing pending behavior detections
+    
+    Teachers can:
+    - View pending detections
+    - Approve, modify, or reject detections
+    - Send notifications
+    """
+    from .models import PendingBehaviorDetection
+    from .serializers import PendingBehaviorDetectionSerializer, BehaviorReviewRequestSerializer
+    
+    serializer_class = PendingBehaviorDetectionSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = ['lecture', 'status', 'is_positive', 'severity']
+    ordering_fields = ['created_at', 'ai_confidence_score']
+    ordering = ['-created_at']
+    
+    def get_queryset(self):
+        """Filter pending detections - teachers see only their lectures"""
+        user = self.request.user
+        
+        if not user.is_authenticated or user.role != 'teacher':
+            from .models import PendingBehaviorDetection
+            return PendingBehaviorDetection.objects.none()
+        
+        from .models import PendingBehaviorDetection
+        return PendingBehaviorDetection.objects.filter(
+            lecture__teacher=user
+        ).select_related('lecture', 'reviewed_by')
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
+    def review(self, request, pk=None):
+        """
+        Review and process a pending behavior detection
+        
+        Actions:
+        - APPROVE: Accept as-is and create incident/note
+        - MODIFY: Edit before creating incident/note
+        - REJECT: Discard detection
+        
+        Request Body:
+        {
+            "action": "APPROVE" | "REJECT" | "MODIFY",
+            "teacher_notes": "optional comments",
+            "modified_description": "optional (for MODIFY)",
+            "modified_severity": "optional (for MODIFY)",
+            "modified_behavior_type": "optional (for MODIFY)",
+            "send_to_student": true,
+            "send_to_parent": true
+        }
+        """
+        from .models import PendingBehaviorDetection
+        from .serializers import BehaviorReviewRequestSerializer
+        from apps.schools.models import ClassroomEnrollment
+        
+        pending = self.get_object()
+        
+        # Validate request
+        serializer = BehaviorReviewRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Invalid request data',
+                    'errors': serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        validated_data = serializer.validated_data
+        action = validated_data['action']
+        teacher_notes = validated_data.get('teacher_notes', '')
+        send_to_student = validated_data.get('send_to_student', True)
+        send_to_parent = validated_data.get('send_to_parent', True)
+        
+        # Handle REJECT
+        if action == 'REJECT':
+            pending.status = 'rejected'
+            pending.reviewed_by = request.user
+            pending.reviewed_at = timezone.now()
+            pending.teacher_notes = teacher_notes
+            pending.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Behavior detection rejected. No action taken.',
+                'detection_id': pending.id,
+                'status': pending.status
+            })
+        
+        # Handle APPROVE or MODIFY
+        try:
+            # Find student by name (simplified - in production, use better matching)
+            from apps.accounts.models import User
+            
+            # Try to find student in the lecture's classroom
+            classroom = pending.lecture.classroom
+            enrolled_students = ClassroomEnrollment.objects.filter(
+                classroom=classroom,
+                is_active=True
+            ).select_related('student')
+            
+            # Simple name matching (case-insensitive)
+            student = None
+            for enrollment in enrolled_students:
+                full_name = enrollment.student.get_full_name()
+                if pending.student_name.lower() in full_name.lower() or full_name.lower() in pending.student_name.lower():
+                    student = enrollment.student
+                    break
+            
+            if not student:
+                return Response(
+                    {
+                        'success': False,
+                        'message': f'Could not find student "{pending.student_name}" in classroom. Please create incident manually.',
+                        'error_code': 'STUDENT_NOT_FOUND'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Prepare data
+            if action == 'MODIFY':
+                description = validated_data.get('modified_description') or pending.description
+                severity = validated_data.get('modified_severity') or pending.severity
+                behavior_type = validated_data.get('modified_behavior_type') or pending.behavior_type
+                
+                # Save modifications
+                pending.modified_description = description
+                pending.modified_severity = severity
+                pending.modified_behavior_type = behavior_type
+                pending.status = 'modified'
+            else:  # APPROVE
+                description = pending.description
+                severity = pending.severity
+                behavior_type = pending.behavior_type
+                pending.status = 'approved'
+            
+            # Create BehaviorIncident or BehaviorNote based on type
+            if pending.is_positive:
+                # Create positive behavior note
+                note = BehaviorNote.objects.create(
+                    student=student,
+                    classroom=classroom,
+                    teacher=request.user,
+                    lecture=pending.lecture,
+                    note_type='positive',
+                    note=description,
+                    source='ai_lecture',
+                    is_ai_generated=True,
+                    ai_transcript_snippet=pending.original_statement,
+                    visible_to_student=send_to_student,
+                    visible_to_parent=send_to_parent
+                )
+                pending.created_note = note
+                created_type = 'note'
+                created_id = note.id
+            else:
+                # Create negative behavior incident
+                incident = BehaviorIncident.objects.create(
+                    student=student,
+                    classroom=classroom,
+                    reported_by=request.user,
+                    lecture=pending.lecture,
+                    incident_type=behavior_type,
+                    severity=severity,
+                    title=f"Behavior: {behavior_type}",
+                    description=description,
+                    source='ai_lecture',
+                    is_ai_generated=True,
+                    ai_confidence_score=pending.ai_confidence_score,
+                    ai_transcript_snippet=pending.original_statement
+                )
+                pending.created_incident = incident
+                created_type = 'incident'
+                created_id = incident.id
+            
+            # Update pending detection
+            pending.reviewed_by = request.user
+            pending.reviewed_at = timezone.now()
+            pending.teacher_notes = teacher_notes
+            
+            # Mark notifications (actual sending would happen here)
+            if send_to_student:
+                pending.student_notified = True
+            if send_to_parent:
+                pending.parent_notified = True
+            if send_to_student or send_to_parent:
+                pending.notification_sent_at = timezone.now()
+            
+            pending.save()
+            
+            return Response({
+                'success': True,
+                'message': f'Behavior detection {action.lower()}ed and {created_type} created.',
+                'detection_id': pending.id,
+                'status': pending.status,
+                'created_type': created_type,
+                'created_id': str(created_id),
+                'student_notified': pending.student_notified,
+                'parent_notified': pending.parent_notified
+            })
+        
+        except Exception as e:
+            return Response(
+                {
+                    'success': False,
+                    'message': f'Error processing detection: {str(e)}',
+                    'error_code': 'PROCESSING_ERROR'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated, IsTeacher])
+    def pending_count(self, request):
+        """Get count of pending detections for teacher"""
+        count = self.get_queryset().filter(status='pending').count()
+        return Response({
+            'pending_count': count
+        })
