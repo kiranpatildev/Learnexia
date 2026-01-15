@@ -56,3 +56,61 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
         model = QuizAttempt
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'student', 'started_at', 'submitted_at', 'is_ai_graded']
+
+
+# ============================================================================
+# AI QUIZ GENERATION SERIALIZERS
+# ============================================================================
+
+class QuizGenerationRequestSerializer(serializers.Serializer):
+    """
+    Serializer for AI quiz generation request
+    """
+    
+    difficulty = serializers.ChoiceField(
+        choices=['EASY', 'MEDIUM', 'HARD'],
+        default='MEDIUM',
+        help_text='Quiz difficulty level (EASY: recall, MEDIUM: application, HARD: analysis)'
+    )
+    
+    length = serializers.ChoiceField(
+        choices=[5, 10, 15],
+        default=10,
+        help_text='Number of questions to generate'
+    )
+    
+    force_regenerate = serializers.BooleanField(
+        default=False,
+        help_text='Regenerate quiz even if one already exists'
+    )
+    
+    auto_publish = serializers.BooleanField(
+        default=False,
+        help_text='Automatically publish quiz after generation (not recommended - review first)'
+    )
+    
+    def validate(self, data):
+        """Validate generation request"""
+        # Convert length to int if it's a string
+        if 'length' in data:
+            data['length'] = int(data['length'])
+        return data
+
+
+class QuizGenerationResponseSerializer(serializers.Serializer):
+    """
+    Serializer for AI quiz generation response
+    """
+    
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    
+    # Data fields (only if success=True)
+    quiz_id = serializers.UUIDField(required=False)
+    title = serializers.CharField(required=False)
+    difficulty = serializers.CharField(required=False)
+    question_count = serializers.IntegerField(required=False)
+    preview = serializers.CharField(required=False, help_text='First 500 characters')
+    
+    # Error field (only if success=False)
+    error_code = serializers.CharField(required=False)

@@ -787,6 +787,195 @@ class LectureViewSet(viewsets.ModelViewSet):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
+    def generate_quiz(self, request, pk=None):
+        """
+        Generate AI-powered quiz from approved lecture transcript
+        
+        Endpoint: POST /api/v1/lectures/{id}/generate_quiz/
+        
+        Request Body:
+        {
+            "difficulty": "EASY" | "MEDIUM" | "HARD",  // Default: MEDIUM
+            "length": 5 | 10 | 15,                      // Default: 10
+            "force_regenerate": false,
+            "auto_publish": false
+        }
+        
+        Difficulty Levels:
+        - EASY: Recall/Recognition (Bloom's Level 1-2) - Basic definitions and facts
+        - MEDIUM: Application (Bloom's Level 3-4) - Applying concepts to scenarios
+        - HARD: Analysis/Evaluation (Bloom's Level 5-6) - Complex reasoning and synthesis
+        
+        Response (Success):
+        {
+            "success": true,
+            "message": "Quiz generated successfully!",
+            "quiz_id": "uuid-here",
+            "title": "Quiz title",
+            "difficulty": "MEDIUM",
+            "question_count": 10,
+            "preview": "First 500 characters..."
+        }
+        
+        Response (Error):
+        {
+            "success": false,
+            "message": "Transcript not approved yet",
+            "error_code": "TRANSCRIPT_NOT_APPROVED"
+        }
+        """
+        from apps.assessments.models import Quiz
+        from apps.assessments.ai_services.quiz_generator import QuizGeneratorService
+        from apps.assessments.serializers import QuizGenerationRequestSerializer
+        
+        lecture = self.get_object()
+        
+        # Validate permissions (only teacher who owns lecture)
+        if lecture.teacher != request.user:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'You can only generate quizzes for your own lectures',
+                    'error_code': 'PERMISSION_DENIED'
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Validate request data
+        serializer = QuizGenerationRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Invalid request data',
+                    'error_code': 'INVALID_REQUEST',
+                    'errors': serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        validated_data = serializer.validated_data
+        difficulty = validated_data.get('difficulty', 'MEDIUM')
+        length = validated_data.get('length', 10)
+        force_regenerate = validated_data.get('force_regenerate', False)
+        auto_publish = validated_data.get('auto_publish', False)
+        
+        # Check prerequisites
+        if not lecture.transcript:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'No transcript available. Please add lecture content first.',
+                    'error_code': 'EMPTY_TRANSCRIPT'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not lecture.transcript_approved_by_teacher:
+            return Response(
+                {
+                    'success': False,
+                    'message': 'Transcript must be approved before generating quiz. Use the approve_transcript endpoint first.',
+                    'error_code': 'TRANSCRIPT_NOT_APPROVED'
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if quiz already exists for this lecture
+        try:
+            existing_quiz = Quiz.objects.get(lecture=lecture)
+            if not force_regenerate:
+                return Response(
+                    {
+                        'success': False,
+                        'message': 'Quiz already exists for this lecture. Use force_regenerate=true to regenerate.',
+                        'error_code': 'QUIZ_EXISTS',
+                        'quiz_id': str(existing_quiz.id)
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Quiz.DoesNotExist:
+            existing_quiz = None
+        
+        # Generate quiz using AI service
+        try:
+            service = QuizGeneratorService()
+            result = service.generate_quiz(
+                lecture=lecture,
+                difficulty=difficulty,
+                length=length
+            )
+            
+            if not result['success']:
+                return Response(
+                    {
+                        'success': False,
+                        'message': result.get('error', 'Failed to generate quiz'),
+                        'error_code': 'GENERATION_FAILED'
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            
+            # Save to database
+            quiz_title = f"{lecture.title} - {difficulty} Quiz"
+            
+            if existing_quiz:
+                # Update existing quiz
+                quiz = existing_quiz
+                quiz.title = quiz_title
+                quiz.description = f"AI-generated {difficulty} level quiz with {length} questions"
+                quiz.content = result['quiz_content']
+                quiz.difficulty = difficulty.lower()
+                quiz.is_ai_generated = True
+                quiz.ai_generated_at = timezone.now()
+            else:
+                # Create new quiz
+                quiz = Quiz.objects.create(
+                    lecture=lecture,
+                    classroom=lecture.classroom,
+                    teacher=lecture.teacher,
+                    title=quiz_title,
+                    description=f"AI-generated {difficulty} level quiz with {length} questions",
+                    content=result['quiz_content'],
+                    difficulty=difficulty.lower(),
+                    is_ai_generated=True,
+                    ai_generated_at=timezone.now(),
+                    is_published=auto_publish,
+                    time_limit=length * 2  # 2 minutes per question
+                )
+            
+            # Optionally publish
+            if auto_publish:
+                quiz.is_published = True
+                quiz.published_at = timezone.now()
+            
+            quiz.save()
+            
+            logger.info(f"✅ Quiz generated for lecture {lecture.id}: {difficulty} level, {length} questions")
+            
+            # Return success response
+            return Response({
+                'success': True,
+                'message': f'{difficulty} quiz generated successfully! Review and publish when ready.',
+                'quiz_id': str(quiz.id),
+                'title': quiz.title,
+                'difficulty': difficulty,
+                'question_count': length,
+                'preview': quiz.content[:500] if quiz.content else ''
+            }, status=status.HTTP_201_CREATED)
+        
+        except Exception as e:
+            logger.error(f"Quiz generation error: {str(e)}", exc_info=True)
+            return Response(
+                {
+                    'success': False,
+                    'message': f'An error occurred while generating quiz: {str(e)}',
+                    'error_code': 'GENERATION_ERROR'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 
