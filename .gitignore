@@ -48,6 +48,17 @@ static/
 .env
 .env.local
 .env.*.local
+
+# =========================
+# Frontend (React/Node.js)
+# =========================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.vite/
+frontend/package-lock.json
 *.env
 
 # =========================
