@@ -7,6 +7,8 @@ import { ParentLayout } from './layouts/ParentLayout';
 import { StudentDashboard } from './pages/student/StudentDashboard';
 import { StudentLectureDetail } from './pages/student/StudentLectureDetail';
 import { StudentNotesPage } from './pages/student/StudentNotesPage';
+import { StudentFlashcardsPage } from './pages/student/StudentFlashcardsPage';
+import { FlashcardStudyPage } from './pages/student/FlashcardStudyPage';
 import { StudentQuizzesPage } from './pages/student/StudentQuizzesPage';
 import { StudentAssignmentsPage } from './pages/student/StudentAssignmentsPage';
 import { StudentLeaderboardPage } from './pages/student/StudentLeaderboardPage';
@@ -70,6 +72,8 @@ function App() {
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="lectures/:id" element={<StudentLectureDetail />} />
             <Route path="notes" element={<StudentNotesPage />} />
+            <Route path="flashcards" element={<StudentFlashcardsPage />} />
+            <Route path="flashcards/:setId/study" element={<FlashcardStudyPage />} />
             <Route path="quizzes" element={<StudentQuizzesPage />} />
             <Route path="assignments" element={<StudentAssignmentsPage />} />
             <Route path="leaderboard" element={<StudentLeaderboardPage />} />

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/common/Sidebar';
-import { Navbar } from '../components/common/Navbar';
 import {
     LayoutDashboard,
     BookOpen,
+    Layers,
     ClipboardList,
     FileText,
     Trophy,
@@ -14,6 +14,7 @@ import {
 const studentNavItems = [
     { label: 'Dashboard', path: '/student/dashboard', icon: LayoutDashboard },
     { label: 'Lecture Notes', path: '/student/notes', icon: BookOpen },
+    { label: 'Flashcards', path: '/student/flashcards', icon: Layers },
     { label: 'Quizzes', path: '/student/quizzes', icon: ClipboardList },
     { label: 'Assignments', path: '/student/assignments', icon: FileText },
     { label: 'Leaderboard', path: '/student/leaderboard', icon: Trophy },
@@ -31,11 +32,8 @@ export function StudentLayout() {
                 onClose={() => setSidebarOpen(false)}
                 isMobile={true}
             />
-            <div className="flex-1 flex flex-col lg:ml-64">
-                <Navbar onMenuClick={() => setSidebarOpen(true)} />
-                <main className="flex-1">
-                    <Outlet />
-                </main>
+            <div className="flex-1">
+                <Outlet />
             </div>
         </div>
     );

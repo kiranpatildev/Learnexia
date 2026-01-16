@@ -1,226 +1,253 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import {
-    BarChart3,
-    TrendingUp,
-    Users,
-    BookOpen,
-    Trophy,
-    Target,
-    Calendar
-} from 'lucide-react';
+import { Users, Target, Trophy, BookOpen, Award } from 'lucide-react';
+import { Card, CardContent } from '../../components/ui/card';
 
 export function TeacherAnalyticsPage() {
-    const [timeframe, setTimeframe] = useState('week');
-
-    const stats = {
-        totalStudents: 0,
-        activeStudents: 0,
-        averageAttendance: 0,
-        averageScore: 0,
-        lecturesThisWeek: 0,
-        quizzesCompleted: 0,
-    };
+    const [timeRange, setTimeRange] = useState('week');
 
     return (
-        <div className="p-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Analytics</h1>
-                    <p className="text-sm text-slate-600 mt-1">Track class performance and engagement</p>
+        <div className="min-h-screen relative overflow-hidden">
+            {/* Animated Gradient Background */}
+            <div className="fixed inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 animate-gradient-xy">
+                {/* Sparkle Effects */}
+                <div className="absolute inset-0 opacity-30">
+                    {[...Array(50)].map((_, i) => (
+                        <div
+                            key={i}
+                            className="absolute w-1 h-1 bg-white rounded-full animate-twinkle"
+                            style={{
+                                top: `${Math.random() * 100}%`,
+                                left: `${Math.random() * 100}%`,
+                                animationDelay: `${Math.random() * 3}s`,
+                                animationDuration: `${2 + Math.random() * 3}s`
+                            }}
+                        />
+                    ))}
                 </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant={timeframe === 'week' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setTimeframe('week')}
-                    >
-                        This Week
-                    </Button>
-                    <Button
-                        variant={timeframe === 'month' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setTimeframe('month')}
-                    >
-                        This Month
-                    </Button>
-                    <Button
-                        variant={timeframe === 'year' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setTimeframe('year')}
-                    >
-                        This Year
-                    </Button>
+                {/* Gradient Orbs */}
+                <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
+                <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
+                <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000" />
+            </div>
+
+            {/* Content */}
+            <div className="relative z-10 p-8">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 className="text-4xl font-bold text-white mb-2">Analytics</h1>
+                        <p className="text-blue-200">Track class performance and engagement</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setTimeRange('week')}
+                            className={`px-6 py-2 rounded-lg font-medium transition-all ${timeRange === 'week'
+                                    ? 'bg-white text-blue-900'
+                                    : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
+                                }`}
+                        >
+                            This Week
+                        </button>
+                        <button
+                            onClick={() => setTimeRange('month')}
+                            className={`px-6 py-2 rounded-lg font-medium transition-all ${timeRange === 'month'
+                                    ? 'bg-white text-blue-900'
+                                    : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
+                                }`}
+                        >
+                            This Month
+                        </button>
+                        <button
+                            onClick={() => setTimeRange('year')}
+                            className={`px-6 py-2 rounded-lg font-medium transition-all ${timeRange === 'year'
+                                    ? 'bg-white text-blue-900'
+                                    : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-sm'
+                                }`}
+                        >
+                            This Year
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            {/* Overview Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                                <Users className="w-6 h-6 text-blue-600" />
+                {/* Stats Cards Row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    {/* Total Students - Blue Gradient */}
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl blur-sm group-hover:blur-md transition-all opacity-50" />
+                        <div className="relative bg-gradient-to-br from-blue-500/90 to-blue-700/90 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                    <Users className="w-6 h-6 text-white" />
+                                </div>
                             </div>
                             <div>
-                                <p className="text-sm text-slate-600">Total Students</p>
-                                <p className="text-3xl font-semibold text-slate-900">{stats.totalStudents}</p>
-                                <p className="text-xs text-emerald-600 mt-1">
-                                    <TrendingUp className="w-3 h-3 inline mr-1" />
-                                    {stats.activeStudents} active
-                                </p>
+                                <p className="text-blue-100 text-sm mb-1">Total Students</p>
+                                <p className="text-5xl font-bold text-white mb-2">0</p>
+                                <p className="text-blue-200 text-xs">↗ 0 active</p>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <Target className="w-6 h-6 text-emerald-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-600">Avg Attendance</p>
-                                <p className="text-3xl font-semibold text-slate-900">{stats.averageAttendance}%</p>
-                                <p className="text-xs text-slate-500 mt-1">Last 30 days</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                                <Trophy className="w-6 h-6 text-purple-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-600">Avg Score</p>
-                                <p className="text-3xl font-semibold text-slate-900">{stats.averageScore}%</p>
-                                <p className="text-xs text-slate-500 mt-1">All assessments</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Activity Stats */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Lecture Activity</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                                        <BookOpen className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-slate-900">Lectures This Week</p>
-                                        <p className="text-xs text-slate-600">Total conducted</p>
-                                    </div>
-                                </div>
-                                <p className="text-2xl font-semibold text-slate-900">{stats.lecturesThisWeek}</p>
-                            </div>
-
-                            <div className="pt-4 border-t border-slate-200">
-                                <div className="h-40 flex items-end justify-center">
-                                    <div className="text-center text-slate-400">
-                                        <BarChart3 className="w-12 h-12 mx-auto mb-2" />
-                                        <p className="text-sm">Chart visualization coming soon</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Quiz Performance</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                        <Trophy className="w-5 h-5 text-emerald-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-slate-900">Quizzes Completed</p>
-                                        <p className="text-xs text-slate-600">By all students</p>
-                                    </div>
-                                </div>
-                                <p className="text-2xl font-semibold text-slate-900">{stats.quizzesCompleted}</p>
-                            </div>
-
-                            <div className="pt-4 border-t border-slate-200">
-                                <div className="h-40 flex items-end justify-center">
-                                    <div className="text-center text-slate-400">
-                                        <BarChart3 className="w-12 h-12 mx-auto mb-2" />
-                                        <p className="text-sm">Chart visualization coming soon</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Engagement Metrics */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Student Engagement</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                            <p className="text-sm text-blue-900 font-medium">Daily Active</p>
-                            <p className="text-2xl font-semibold text-blue-900 mt-1">0</p>
-                            <p className="text-xs text-blue-700 mt-1">Students today</p>
-                        </div>
-
-                        <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
-                            <p className="text-sm text-emerald-900 font-medium">Assignments</p>
-                            <p className="text-2xl font-semibold text-emerald-900 mt-1">0%</p>
-                            <p className="text-xs text-emerald-700 mt-1">Completion rate</p>
-                        </div>
-
-                        <div className="p-4 rounded-lg bg-purple-50 border border-purple-200">
-                            <p className="text-sm text-purple-900 font-medium">Participation</p>
-                            <p className="text-2xl font-semibold text-purple-900 mt-1">0%</p>
-                            <p className="text-xs text-purple-700 mt-1">Class average</p>
-                        </div>
-
-                        <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
-                            <p className="text-sm text-amber-900 font-medium">Response Time</p>
-                            <p className="text-2xl font-semibold text-amber-900 mt-1">0h</p>
-                            <p className="text-xs text-amber-700 mt-1">Avg to questions</p>
                         </div>
                     </div>
-                </CardContent>
-            </Card>
 
-            {/* Info Banner */}
-            <Card className="border-blue-200 bg-blue-50">
-                <CardContent className="pt-6">
-                    <div className="flex items-start gap-3">
-                        <BarChart3 className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                            <p className="text-sm font-medium text-blue-900">Analytics Dashboard</p>
-                            <p className="text-xs text-blue-700 mt-1">
-                                Detailed analytics and visualizations will be available once you have student activity data.
-                                Create lectures, assignments, and quizzes to start tracking performance.
-                            </p>
+                    {/* Avg Attendance - Green Gradient */}
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-2xl blur-sm group-hover:blur-md transition-all opacity-50" />
+                        <div className="relative bg-gradient-to-br from-emerald-400/90 to-teal-600/90 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                    <Target className="w-6 h-6 text-white" />
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-emerald-100 text-sm mb-1">Avg Attendance</p>
+                                <p className="text-5xl font-bold text-white mb-2">0%</p>
+                                <p className="text-emerald-200 text-xs">Last 30 days</p>
+                            </div>
                         </div>
                     </div>
-                </CardContent>
-            </Card>
+
+                    {/* Avg Score - Purple Gradient */}
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl blur-sm group-hover:blur-md transition-all opacity-50" />
+                        <div className="relative bg-gradient-to-br from-purple-500/90 to-pink-600/90 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                    <Trophy className="w-6 h-6 text-white" />
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-purple-100 text-sm mb-1">Avg Score</p>
+                                <p className="text-5xl font-bold text-white mb-2">0%</p>
+                                <p className="text-purple-200 text-xs">All assessments</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Charts Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    {/* Lecture Activity - Blue to Orange Gradient */}
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-orange-500 rounded-2xl blur-sm opacity-50" />
+                        <div className="relative bg-gradient-to-br from-blue-900/80 via-purple-900/80 to-orange-900/80 backdrop-blur-xl rounded-2xl p-6 border border-white/20 min-h-[300px]">
+                            <h3 className="text-xl font-bold text-white mb-4">Lecture Activity</h3>
+                            <div className="flex items-start gap-4 mb-6">
+                                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                                    <BookOpen className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                    <p className="text-white font-semibold">Lectures This Week</p>
+                                    <p className="text-blue-200 text-sm">Total conducted</p>
+                                </div>
+                                <div className="ml-auto">
+                                    <p className="text-4xl font-bold text-white">0</p>
+                                </div>
+                            </div>
+                            {/* Chart Placeholder */}
+                            <div className="relative h-32 flex items-end justify-center gap-2 mb-4">
+                                {[30, 50, 40, 60, 45, 70, 55].map((height, i) => (
+                                    <div
+                                        key={i}
+                                        className="w-8 bg-white/20 rounded-t backdrop-blur-sm"
+                                        style={{ height: `${height}%` }}
+                                    />
+                                ))}
+                            </div>
+                            <p className="text-center text-white/60 text-sm">Chart visualization coming soon</p>
+                        </div>
+                    </div>
+
+                    {/* Quiz Performance - Teal to Pink Gradient */}
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-gradient-to-br from-teal-500 via-blue-600 to-pink-500 rounded-2xl blur-sm opacity-50" />
+                        <div className="relative bg-gradient-to-br from-teal-900/80 via-blue-900/80 to-pink-900/80 backdrop-blur-xl rounded-2xl p-6 border border-white/20 min-h-[300px]">
+                            <h3 className="text-xl font-bold text-white mb-4">Quiz Performance</h3>
+                            <div className="flex items-start gap-4 mb-6">
+                                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                                    <Award className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                    <p className="text-white font-semibold">Quizzes Completed</p>
+                                    <p className="text-teal-200 text-sm">By all students</p>
+                                </div>
+                                <div className="ml-auto">
+                                    <p className="text-4xl font-bold text-white">0</p>
+                                </div>
+                            </div>
+                            {/* Chart Placeholder */}
+                            <div className="relative h-32 flex items-end justify-center gap-2 mb-4">
+                                {[40, 60, 35, 70, 50, 65, 45].map((height, i) => (
+                                    <div
+                                        key={i}
+                                        className="w-8 bg-white/20 rounded-t backdrop-blur-sm"
+                                        style={{ height: `${height}%` }}
+                                    />
+                                ))}
+                            </div>
+                            <p className="text-center text-white/60 text-sm">Chart visualization coming soon</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom Gradient Wave */}
+                <div className="relative h-32 rounded-2xl overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 via-pink-600 to-orange-500 opacity-80" />
+                    <div className="absolute inset-0">
+                        {[...Array(30)].map((_, i) => (
+                            <div
+                                key={i}
+                                className="absolute bottom-0 w-1 bg-white/30 rounded-full animate-wave"
+                                style={{
+                                    left: `${i * 3.33}%`,
+                                    height: `${30 + Math.random() * 40}%`,
+                                    animationDelay: `${i * 0.1}s`
+                                }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <style jsx>{`
+                @keyframes gradient-xy {
+                    0%, 100% { background-position: 0% 0%; }
+                    25% { background-position: 100% 0%; }
+                    50% { background-position: 100% 100%; }
+                    75% { background-position: 0% 100%; }
+                }
+                @keyframes twinkle {
+                    0%, 100% { opacity: 0; }
+                    50% { opacity: 1; }
+                }
+                @keyframes blob {
+                    0%, 100% { transform: translate(0, 0) scale(1); }
+                    25% { transform: translate(20px, -20px) scale(1.1); }
+                    50% { transform: translate(-20px, 20px) scale(0.9); }
+                    75% { transform: translate(20px, 20px) scale(1.05); }
+                }
+                @keyframes wave {
+                    0%, 100% { transform: scaleY(1); }
+                    50% { transform: scaleY(1.5); }
+                }
+                .animate-gradient-xy {
+                    background-size: 400% 400%;
+                    animation: gradient-xy 15s ease infinite;
+                }
+                .animate-twinkle {
+                    animation: twinkle 3s ease-in-out infinite;
+                }
+                .animate-blob {
+                    animation: blob 7s ease-in-out infinite;
+                }
+                .animation-delay-2000 {
+                    animation-delay: 2s;
+                }
+                .animation-delay-4000 {
+                    animation-delay: 4s;
+                }
+                .animate-wave {
+                    animation: wave 2s ease-in-out infinite;
+                }
+            `}</style>
         </div>
     );
 }

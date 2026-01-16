@@ -1,252 +1,327 @@
 import { useState, useEffect } from 'react';
-import { StatCard } from '../../components/common/StatCard';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { BookOpen, Trophy, Flame, Target, TrendingUp, Clock, User, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { lectureService } from '../../services/student.service';
+import { Card, CardContent } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
+import {
+    BookOpen,
+    Search,
+    Flame,
+    Award,
+    Trophy,
+    FileText,
+    Layers,
+    ClipboardList,
+    Users,
+    Bell,
+    Loader2,
+    Clock,
+    ChevronRight
+} from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
+import api from '../../services/api';
 
 export function StudentDashboard() {
     const navigate = useNavigate();
+    const { user } = useAuthStore();
     const [loading, setLoading] = useState(true);
     const [lectures, setLectures] = useState([]);
-    const [error, setError] = useState(null);
-
-    // Simple mock data for now
-    const stats = {
-        lecturesWatched: 0,
-        assignmentsPending: 0,
-        quizzesCompleted: 0,
-        averageScore: 0,
-        xp: 0,
-        streak: 0,
-    };
+    const [stats, setStats] = useState({
+        level: 12,
+        currentXP: 2450,
+        nextLevelXP: 3000,
+        dayStreak: 8,
+        totalXP: 2450,
+        achievements: 3
+    });
 
     useEffect(() => {
-        fetchLectures();
+        fetchDashboardData();
     }, []);
 
-    const fetchLectures = async () => {
+    const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            setError(null);
-            const response = await lectureService.getLectures({
-                ordering: '-created_at',
-                limit: 5
+
+            // Fetch lectures
+            const lecturesRes = await api.get('/lectures/lectures/', {
+                params: { limit: 5, ordering: '-created_at' }
             });
-            setLectures(response.results || response || []);
+            const lectureData = lecturesRes.data.results || lecturesRes.data || [];
+            setLectures(lectureData);
+
+            // Update stats from user data if available
+            if (user) {
+                setStats(prev => ({
+                    ...prev,
+                    currentXP: user.xp || prev.currentXP,
+                    totalXP: user.xp || prev.totalXP,
+                    dayStreak: user.streak || prev.dayStreak
+                }));
+            }
         } catch (error) {
-            console.error('Error fetching lectures:', error);
-            setError('Failed to load lectures');
+            console.error('Error fetching dashboard data:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const formatDuration = (seconds) => {
-        if (!seconds) return 'N/A';
-        const minutes = Math.floor(seconds / 60);
-        return `${minutes} min`;
-    };
-
     const formatDate = (dateString) => {
-        if (!dateString) return 'N/A';
+        if (!dateString) return '';
         const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return date.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
-    const getRecordingTypeDisplay = (lecture) => {
-        // If there's a transcript and no audio/video file, it's a text lecture
-        if (lecture.transcript && !lecture.audio_file && !lecture.video_file) {
-            return { icon: '📝', label: 'Text' };
-        }
-        if (lecture.recording_type === 'video') {
-            return { icon: '🎥', label: 'Video' };
-        }
-        return { icon: '🎙️', label: 'Audio' };
-    };
+    const progressPercentage = (stats.currentXP / stats.nextLevelXP) * 100;
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+            </div>
+        );
+    }
 
     return (
-        <div className="p-6 space-y-6">
-            {/* Header with XP and Streak */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-                    <p className="text-sm text-slate-600 mt-1">Welcome back! Here's your progress</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg">
-                        <Trophy className="w-5 h-5 text-blue-600" />
-                        <span className="text-sm font-medium text-blue-900">{stats.xp} XP</span>
+        <div className="min-h-screen bg-gray-50">
+            {/* Top Bar */}
+            <div className="bg-white border-b border-gray-200 px-6 py-4">
+                <div className="max-w-7xl mx-auto flex items-center justify-between">
+                    {/* Left: Dashboard Title */}
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+                        <p className="text-sm text-gray-600">Welcome back, {user?.first_name || 'Alex'}!</p>
                     </div>
-                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 rounded-lg">
-                        <Flame className="w-5 h-5 text-amber-600" />
-                        <span className="text-sm font-medium text-amber-900">{stats.streak} Day Streak</span>
+
+                    {/* Right: Search, Streak, XP, Buttons, Notification */}
+                    <div className="flex items-center gap-4">
+                        {/* Search */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent w-64"
+                            />
+                        </div>
+
+                        {/* Day Streak */}
+                        <div className="flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-lg">
+                            <Flame className="w-4 h-4 text-amber-600" />
+                            <span className="text-sm font-semibold text-gray-900">{stats.dayStreak} day streak</span>
+                        </div>
+
+                        {/* Total XP */}
+                        <div className="flex items-center gap-2 bg-amber-100 px-3 py-2 rounded-lg">
+                            <Award className="w-4 h-4 text-amber-700" />
+                            <span className="text-sm font-semibold text-gray-900">{stats.totalXP} XP</span>
+                        </div>
+
+                        {/* Teacher/Student Buttons */}
+                        <div className="flex items-center gap-2">
+                            <button className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                                Teacher
+                            </button>
+                            <button className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg">
+                                Student
+                            </button>
+                        </div>
+
+                        {/* Notification Bell */}
+                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <Bell className="w-5 h-5 text-gray-700" />
+                        </button>
                     </div>
                 </div>
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    label="Lectures Watched"
-                    value={stats.lecturesWatched}
-                    icon={BookOpen}
-                    color="blue"
-                />
-                <StatCard
-                    label="Assignments Pending"
-                    value={stats.assignmentsPending}
-                    icon={Target}
-                    color="amber"
-                />
-                <StatCard
-                    label="Quizzes Completed"
-                    value={stats.quizzesCompleted}
-                    icon={Trophy}
-                    color="emerald"
-                />
-                <StatCard
-                    label="Average Score"
-                    value={`${stats.averageScore}%`}
-                    icon={TrendingUp}
-                    color="emerald"
-                />
-            </div>
+            {/* Main Content */}
+            <div className="max-w-7xl mx-auto px-6 py-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Left Column - 2/3 width */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* Level Card */}
+                        <Card className="border-0 shadow-sm">
+                            <CardContent className="p-6">
+                                <div className="flex items-center gap-6">
+                                    {/* Level Badge */}
+                                    <div className="w-20 h-20 bg-amber-400 rounded-2xl flex items-center justify-center flex-shrink-0">
+                                        <span className="text-3xl font-bold text-gray-900">{stats.level}</span>
+                                    </div>
 
-            {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Main Column - Recent Lecture Notes */}
-                <div className="lg:col-span-2">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle>Recent Lecture Notes</CardTitle>
-                            <Button variant="ghost" size="sm" onClick={() => navigate('/student/notes')}>
-                                View All
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
-                            {loading ? (
-                                <div className="text-center py-12">
-                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                                    <p className="text-sm text-slate-600 mt-4">Loading lectures...</p>
-                                </div>
-                            ) : error ? (
-                                <div className="text-center py-12">
-                                    <BookOpen className="w-12 h-12 text-red-400 mx-auto mb-4" />
-                                    <h3 className="text-lg font-medium text-slate-900 mb-2">Error loading lectures</h3>
-                                    <p className="text-sm text-slate-600 mb-4">{error}</p>
-                                    <Button onClick={fetchLectures} size="sm">Try Again</Button>
-                                </div>
-                            ) : lectures.length === 0 ? (
-                                <div className="text-center py-12">
-                                    <BookOpen className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                                    <h3 className="text-lg font-medium text-slate-900 mb-2">No lecture notes yet</h3>
-                                    <p className="text-sm text-slate-600">
-                                        Notes will appear here once your teacher creates lectures
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {lectures.map((lecture) => (
-                                        <div
-                                            key={lecture.id}
-                                            className="p-4 border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"
-                                            onClick={() => navigate(`/student/lectures/${lecture.id}`)}
-                                        >
-                                            <div className="flex items-start justify-between mb-2">
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold text-slate-900 mb-1">{lecture.title}</h4>
-                                                    <p className="text-sm text-slate-600 line-clamp-2">{lecture.description || 'No description'}</p>
-                                                </div>
-                                                <Badge variant="outline" className="ml-4">
-                                                    {getRecordingTypeDisplay(lecture).icon} {getRecordingTypeDisplay(lecture).label}
-                                                </Badge>
-                                            </div>
-                                            <div className="flex items-center gap-4 text-xs text-slate-500 mt-3">
-                                                <div className="flex items-center gap-1">
-                                                    <BookOpen className="w-3.5 h-3.5" />
-                                                    <span>{lecture.classroom_detail?.subject?.name || lecture.chapter}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <User className="w-3.5 h-3.5" />
-                                                    <span>{lecture.teacher_detail?.first_name} {lecture.teacher_detail?.last_name}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Clock className="w-3.5 h-3.5" />
-                                                    <span>{formatDuration(lecture.duration)}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <Calendar className="w-3.5 h-3.5" />
-                                                    <span>{formatDate(lecture.created_at)}</span>
-                                                </div>
-                                            </div>
+                                    {/* Level Info */}
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-bold text-gray-900 mb-1">Level {stats.level}</h3>
+                                        <p className="text-sm text-gray-600 mb-3">
+                                            {stats.currentXP} / {stats.nextLevelXP} XP to next level
+                                        </p>
+                                        {/* Progress Bar */}
+                                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-gray-900 transition-all duration-500"
+                                                style={{ width: `${progressPercentage}%` }}
+                                            />
                                         </div>
-                                    ))}
+                                    </div>
+
+                                    {/* Stats */}
+                                    <div className="flex items-center gap-8">
+                                        <div className="text-center">
+                                            <div className="flex items-center gap-1 text-amber-600 mb-1">
+                                                <Flame className="w-5 h-5" />
+                                                <span className="text-2xl font-bold text-gray-900">{stats.dayStreak}</span>
+                                            </div>
+                                            <p className="text-xs text-gray-600">Day Streak</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="flex items-center gap-1 text-amber-600 mb-1">
+                                                <Award className="w-5 h-5" />
+                                                <span className="text-2xl font-bold text-gray-900">{stats.totalXP}</span>
+                                            </div>
+                                            <p className="text-xs text-gray-600">Total XP</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="flex items-center gap-1 text-amber-600 mb-1">
+                                                <Trophy className="w-5 h-5" />
+                                                <span className="text-2xl font-bold text-gray-900">{stats.achievements}</span>
+                                            </div>
+                                            <p className="text-xs text-gray-600">Achievements</p>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                            </CardContent>
+                        </Card>
 
-                {/* Sidebar */}
-                <div className="space-y-6">
-                    {/* Upcoming Assignments */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Upcoming Assignments</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-center py-8">
-                                <Target className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                                <p className="text-sm text-slate-600">No pending assignments</p>
-                                <p className="text-xs text-slate-500 mt-1">You're all caught up!</p>
-                            </div>
-                            <Button
-                                variant="outline"
-                                className="w-full mt-4"
-                                onClick={() => navigate('/student/assignments')}
-                            >
-                                View All Assignments
-                            </Button>
-                        </CardContent>
-                    </Card>
+                        {/* Available Lectures */}
+                        <Card className="border-0 shadow-sm">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-2">
+                                        <BookOpen className="w-5 h-5 text-amber-600" />
+                                        <h3 className="text-lg font-bold text-gray-900">Available Lectures</h3>
+                                    </div>
+                                    <button className="text-sm text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1">
+                                        View All
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
 
-                    {/* Quick Actions */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Quick Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start"
-                                    onClick={() => navigate('/student/notes')}
-                                >
-                                    <BookOpen className="w-4 h-4 mr-2" />
-                                    View Notes
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start"
-                                    onClick={() => navigate('/student/quizzes')}
-                                >
-                                    <Trophy className="w-4 h-4 mr-2" />
-                                    Take Quiz
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    className="w-full justify-start"
-                                    onClick={() => navigate('/student/leaderboard')}
-                                >
-                                    <TrendingUp className="w-4 h-4 mr-2" />
-                                    View Leaderboard
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                                {lectures.length === 0 ? (
+                                    <div className="text-center py-12">
+                                        <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                                        <p className="text-gray-600">No lectures available yet</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {lectures.slice(0, 3).map((lecture) => (
+                                            <div
+                                                key={lecture.id}
+                                                className="p-4 border border-gray-200 rounded-lg hover:border-amber-300 hover:bg-amber-50/30 transition-all cursor-pointer"
+                                                onClick={() => navigate(`/student/lectures/${lecture.id}`)}
+                                            >
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex-1">
+                                                        <h4 className="font-semibold text-gray-900 mb-1">
+                                                            {lecture.title}
+                                                        </h4>
+                                                        <p className="text-sm text-gray-600">
+                                                            {lecture.subject} • {lecture.duration || 45} min
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 text-sm text-gray-500">
+                                                        <Clock className="w-4 h-4" />
+                                                        <span>{formatDate(lecture.created_at)}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Resources */}
+                                                <div className="flex items-center gap-2">
+                                                    {lecture.has_notes && (
+                                                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
+                                                            <FileText className="w-3 h-3 mr-1" />
+                                                            1 Notes
+                                                        </Badge>
+                                                    )}
+                                                    {lecture.has_flashcards && (
+                                                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+                                                            <Layers className="w-3 h-3 mr-1" />
+                                                            1 Flashcards
+                                                        </Badge>
+                                                    )}
+                                                    {lecture.has_quiz && (
+                                                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+                                                            <ClipboardList className="w-3 h-3 mr-1" />
+                                                            1 Quiz
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Right Column - 1/3 width */}
+                    <div className="space-y-6">
+                        {/* Continue Learning */}
+                        <Card className="border-0 shadow-sm">
+                            <CardContent className="p-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-4">Continue Learning</h3>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => navigate('/student/notes')}
+                                        className="w-full p-4 bg-amber-400 hover:bg-amber-500 rounded-lg transition-colors text-left"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <BookOpen className="w-5 h-5 text-gray-900" />
+                                            <span className="font-semibold text-gray-900">Browse Lectures</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/student/quizzes')}
+                                        className="w-full p-4 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <ClipboardList className="w-5 h-5 text-gray-700" />
+                                            <span className="font-semibold text-gray-900">Take a Quiz</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/student/leaderboard')}
+                                        className="w-full p-4 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Users className="w-5 h-5 text-gray-700" />
+                                            <span className="font-semibold text-gray-900">View Leaderboard</span>
+                                        </div>
+                                    </button>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Achievements */}
+                        <Card className="border-0 shadow-sm">
+                            <CardContent className="p-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Trophy className="w-5 h-5 text-amber-600" />
+                                    <h3 className="text-lg font-bold text-gray-900">Achievements</h3>
+                                </div>
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="aspect-square bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+                                        <span className="text-2xl">🎯</span>
+                                    </div>
+                                    <div className="aspect-square bg-gradient-to-br from-amber-100 to-amber-200 rounded-lg flex items-center justify-center">
+                                        <span className="text-2xl">👑</span>
+                                    </div>
+                                    <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                                        <span className="text-xs text-gray-500 font-medium">Locked</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </div>

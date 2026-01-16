@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '../components/common/Sidebar';
-import { Navbar } from '../components/common/Navbar';
 import {
     LayoutDashboard,
     Users,
@@ -31,11 +30,8 @@ export function ParentLayout() {
                 onClose={() => setSidebarOpen(false)}
                 isMobile={true}
             />
-            <div className="flex-1 flex flex-col lg:ml-64">
-                <Navbar onMenuClick={() => setSidebarOpen(true)} />
-                <main className="flex-1">
-                    <Outlet />
-                </main>
+            <div className="flex-1">
+                <Outlet />
             </div>
         </div>
     );
