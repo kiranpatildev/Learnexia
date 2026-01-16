@@ -24,7 +24,9 @@ import {
     ChevronLeft,
     X,
     Upload,
-    Loader2
+    Loader2,
+    Layers,
+    ClipboardList
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lectureService } from '../../services/student.service';
@@ -457,6 +459,40 @@ export function TeacherLecturesPage() {
                                     <Button variant="outline" size="sm">
                                         <Trash2 className="w-3 h-3" />
                                     </Button>
+                                </div>
+
+                                {/* AI Resources Generation */}
+                                <div className="mt-3 pt-3 border-t border-slate-200">
+                                    <p className="text-xs text-slate-600 mb-2 font-medium">Generate Resources:</p>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 text-xs"
+                                            onClick={() => navigate('/teacher/ai-features', { state: { selectedLecture: lecture } })}
+                                        >
+                                            <FileText className="w-3 h-3 mr-1" />
+                                            Notes
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 text-xs"
+                                            onClick={() => navigate('/teacher/ai-features', { state: { selectedLecture: lecture } })}
+                                        >
+                                            <Layers className="w-3 h-3 mr-1" />
+                                            Flashcards
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex-1 text-xs"
+                                            onClick={() => navigate('/teacher/ai-features', { state: { selectedLecture: lecture } })}
+                                        >
+                                            <ClipboardList className="w-3 h-3 mr-1" />
+                                            Quiz
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

@@ -264,27 +264,6 @@ export function StudentLectureDetail() {
                             </div>
                         </CardContent>
                     </Card>
-
-                    {/* Quick Actions */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Quick Actions</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            <Button variant="outline" className="w-full justify-start" disabled>
-                                <FileText className="w-4 h-4 mr-2" />
-                                Generate Notes (Coming Soon)
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start" disabled>
-                                <BookOpen className="w-4 h-4 mr-2" />
-                                Create Flashcards (Coming Soon)
-                            </Button>
-                            <Button variant="outline" className="w-full justify-start" disabled>
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Take Quiz (Coming Soon)
-                            </Button>
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
         </div>

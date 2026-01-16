@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -11,14 +12,51 @@ import {
     Users,
     Loader2,
     CheckCircle,
-    AlertCircle
+    AlertCircle,
+    BookOpen
 } from 'lucide-react';
 import { lectureService } from '../../services/lecture.service';
+import api from '../../services/api';
 
 export function AIFeaturesPage() {
-    const [selectedLecture, setSelectedLecture] = useState(null);
+    const location = useLocation();
+    const [lectures, setLectures] = useState([]);
+    const [selectedLecture, setSelectedLecture] = useState(location.state?.selectedLecture || null);
     const [loading, setLoading] = useState({});
     const [results, setResults] = useState({});
+    const [fetchingLectures, setFetchingLectures] = useState(true);
+
+    useEffect(() => {
+        fetchLectures();
+    }, []);
+
+    useEffect(() => {
+        if (location.state?.selectedLecture) {
+            setSelectedLecture(location.state.selectedLecture);
+        }
+    }, [location.state]);
+
+    const fetchLectures = async () => {
+        try {
+            setFetchingLectures(true);
+            const response = await api.get('/lectures/lectures/', {
+                params: {
+                    ordering: '-created_at'
+                }
+            });
+            const lectureData = response.data.results || response.data || [];
+            setLectures(lectureData);
+
+            // Auto-select first lecture if none selected
+            if (!selectedLecture && lectureData.length > 0) {
+                setSelectedLecture(lectureData[0]);
+            }
+        } catch (error) {
+            console.error('Error fetching lectures:', error);
+        } finally {
+            setFetchingLectures(false);
+        }
+    };
 
     const handleGenerateNotes = async (format) => {
         if (!selectedLecture) {
@@ -31,12 +69,13 @@ export function AIFeaturesPage() {
             const result = await lectureService.generateNotes(selectedLecture.id, {
                 note_format: format,
                 force_regenerate: false,
-                auto_publish: false,
+                auto_publish: true, // Auto-publish for teachers
             });
             setResults({ ...results, notes: result });
-            alert(`Notes generated successfully! Format: ${format}`);
+            alert(`✅ Notes generated successfully!\n\nFormat: ${format}\nThe notes have been published and are now visible to students.`);
         } catch (error) {
-            alert('Failed to generate notes: ' + (error.response?.data?.message || error.message));
+            const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
+            alert('❌ Failed to generate notes:\n\n' + errorMsg);
         } finally {
             setLoading({ ...loading, notes: false });
         }
@@ -51,15 +90,15 @@ export function AIFeaturesPage() {
         setLoading({ ...loading, quiz: true });
         try {
             const result = await lectureService.generateQuiz(selectedLecture.id, {
-                difficulty,
-                length,
-                force_regenerate: false,
-                auto_publish: false,
+                difficulty_level: difficulty,
+                question_count: length,
+                auto_publish: true,
             });
             setResults({ ...results, quiz: result });
-            alert(`Quiz generated successfully! Difficulty: ${difficulty}, Questions: ${length}`);
+            alert(`✅ Quiz generated successfully!\n\nDifficulty: ${difficulty}\nQuestions: ${length}\nThe quiz has been published and is now available to students.`);
         } catch (error) {
-            alert('Failed to generate quiz: ' + (error.response?.data?.message || error.message));
+            const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
+            alert('❌ Failed to generate quiz:\n\n' + errorMsg);
         } finally {
             setLoading({ ...loading, quiz: false });
         }
@@ -75,35 +114,16 @@ export function AIFeaturesPage() {
         try {
             const result = await lectureService.generateFlashcards(selectedLecture.id, {
                 card_type: cardType,
-                style,
+                style: style,
                 count: 'auto',
             });
             setResults({ ...results, flashcards: result });
-            alert(`Flashcards generated successfully! Type: ${cardType}, Style: ${style}`);
+            alert(`✅ Flashcards generated successfully!\n\nType: ${cardType}\nStyle: ${style}\nCount: ${result.count || 'auto'}\nThe flashcards have been published and are now available to students.`);
         } catch (error) {
-            alert('Failed to generate flashcards: ' + (error.response?.data?.message || error.message));
+            const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
+            alert('❌ Failed to generate flashcards:\n\n' + errorMsg);
         } finally {
             setLoading({ ...loading, flashcards: false });
-        }
-    };
-
-    const handleDetectBehaviors = async (sensitivity) => {
-        if (!selectedLecture) {
-            alert('Please select a lecture first');
-            return;
-        }
-
-        setLoading({ ...loading, behaviors: true });
-        try {
-            const result = await lectureService.detectBehaviors(selectedLecture.id, {
-                sensitivity,
-            });
-            setResults({ ...results, behaviors: result });
-            alert(`Behavior detection complete! Found ${result.detected_count} behaviors`);
-        } catch (error) {
-            alert('Failed to detect behaviors: ' + (error.response?.data?.message || error.message));
-        } finally {
-            setLoading({ ...loading, behaviors: false });
         }
     };
 
@@ -116,23 +136,58 @@ export function AIFeaturesPage() {
                     AI Features
                 </h1>
                 <p className="text-sm text-slate-600 mt-1">
-                    Generate notes, quizzes, flashcards, and detect behaviors using AI
+                    Generate notes, quizzes, and flashcards using AI - automatically published to students
                 </p>
             </div>
 
-            {/* Info Message */}
-            <Card className="border-blue-200 bg-blue-50">
-                <CardContent className="pt-6">
-                    <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <div>
-                            <p className="text-sm font-medium text-blue-900">Create a lecture first</p>
-                            <p className="text-xs text-blue-700 mt-1">
-                                You need to create a lecture with an approved transcript to use AI features.
-                                Create one in Django admin or using the API.
-                            </p>
+            {/* Lecture Selector */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Select Lecture</CardTitle>
+                    <CardDescription>Choose a lecture to generate AI resources</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {fetchingLectures ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                            <span className="ml-2 text-sm text-slate-600">Loading lectures...</span>
                         </div>
-                    </div>
+                    ) : lectures.length === 0 ? (
+                        <div className="text-center py-8">
+                            <BookOpen className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                            <p className="text-sm text-slate-600 mb-4">No lectures found</p>
+                            <Button onClick={() => window.location.href = '/teacher/lectures'}>
+                                Create Your First Lecture
+                            </Button>
+                        </div>
+                    ) : (
+                        <div>
+                            <Label htmlFor="lecture-select">Select a lecture:</Label>
+                            <select
+                                id="lecture-select"
+                                value={selectedLecture?.id || ''}
+                                onChange={(e) => {
+                                    const lecture = lectures.find(l => l.id === e.target.value);
+                                    setSelectedLecture(lecture);
+                                }}
+                                className="w-full mt-2 px-3 py-2 border border-slate-300 rounded-md"
+                            >
+                                {lectures.map((lecture) => (
+                                    <option key={lecture.id} value={lecture.id}>
+                                        {lecture.title} - {lecture.subject || 'General'} ({new Date(lecture.created_at).toLocaleDateString()})
+                                    </option>
+                                ))}
+                            </select>
+                            {selectedLecture && (
+                                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                    <p className="text-sm font-medium text-blue-900">Selected: {selectedLecture.title}</p>
+                                    {selectedLecture.description && (
+                                        <p className="text-xs text-blue-700 mt-1">{selectedLecture.description}</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
@@ -148,49 +203,78 @@ export function AIFeaturesPage() {
                         <CardDescription>Create study notes in different formats</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div>
-                            <Label className="text-sm font-medium mb-2 block">Select Format:</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateNotes('comprehensive')}
-                                    disabled={!selectedLecture || loading.notes}
-                                    className="justify-start"
-                                >
-                                    {loading.notes ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                    Comprehensive
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateNotes('bullet_point')}
-                                    disabled={!selectedLecture || loading.notes}
-                                    className="justify-start"
-                                >
-                                    Bullet Point
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateNotes('cornell')}
-                                    disabled={!selectedLecture || loading.notes}
-                                    className="justify-start"
-                                >
-                                    Cornell Notes
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateNotes('study_guide')}
-                                    disabled={!selectedLecture || loading.notes}
-                                    className="justify-start"
-                                >
-                                    Study Guide
-                                </Button>
-                            </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button
+                                onClick={() => handleGenerateNotes('DETAILED')}
+                                disabled={!selectedLecture || loading.notes}
+                                className="w-full"
+                            >
+                                {loading.notes ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : null}
+                                Detailed
+                            </Button>
+                            <Button
+                                onClick={() => handleGenerateNotes('CONCISE')}
+                                disabled={!selectedLecture || loading.notes}
+                                variant="outline"
+                                className="w-full"
+                            >
+                                {loading.notes ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : null}
+                                Concise
+                            </Button>
                         </div>
                         {results.notes && (
-                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                                <p className="text-sm text-emerald-900 font-medium">✓ Notes generated successfully!</p>
-                                <p className="text-xs text-emerald-700 mt-1">
-                                    {results.notes.word_count} words • {results.notes.format}
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+                                <p className="text-sm font-medium text-emerald-900 flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Notes generated successfully!
+                                </p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Flashcards Generation */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Layers className="w-5 h-5 text-purple-600" />
+                            Generate Flashcards
+                        </CardTitle>
+                        <CardDescription>Create flashcards for quick review</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <Button
+                                onClick={() => handleGenerateFlashcards('MIXED', 'CONCISE')}
+                                disabled={!selectedLecture || loading.flashcards}
+                                className="w-full"
+                            >
+                                {loading.flashcards ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : null}
+                                Mixed
+                            </Button>
+                            <Button
+                                onClick={() => handleGenerateFlashcards('DEFINITION', 'DETAILED')}
+                                disabled={!selectedLecture || loading.flashcards}
+                                variant="outline"
+                                className="w-full"
+                            >
+                                {loading.flashcards ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : null}
+                                Definitions
+                            </Button>
+                        </div>
+                        {results.flashcards && (
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+                                <p className="text-sm font-medium text-emerald-900 flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Flashcards generated successfully!
                                 </p>
                             </div>
                         )}
@@ -204,170 +288,66 @@ export function AIFeaturesPage() {
                             <ClipboardList className="w-5 h-5 text-emerald-600" />
                             Generate Quiz
                         </CardTitle>
-                        <CardDescription>Create quizzes with different difficulty levels</CardDescription>
+                        <CardDescription>Create quizzes to test understanding</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div>
-                            <Label className="text-sm font-medium mb-2 block">Select Difficulty & Length:</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateQuiz('EASY', 10)}
-                                    disabled={!selectedLecture || loading.quiz}
-                                    className="justify-start"
-                                >
-                                    {loading.quiz ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                    Easy (10Q)
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateQuiz('MEDIUM', 10)}
-                                    disabled={!selectedLecture || loading.quiz}
-                                    className="justify-start"
-                                >
-                                    Medium (10Q)
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateQuiz('HARD', 10)}
-                                    disabled={!selectedLecture || loading.quiz}
-                                    className="justify-start"
-                                >
-                                    Hard (10Q)
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateQuiz('MEDIUM', 15)}
-                                    disabled={!selectedLecture || loading.quiz}
-                                    className="justify-start"
-                                >
-                                    Medium (15Q)
-                                </Button>
-                            </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            <Button
+                                onClick={() => handleGenerateQuiz('easy', 10)}
+                                disabled={!selectedLecture || loading.quiz}
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                            >
+                                {loading.quiz ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Easy'}
+                            </Button>
+                            <Button
+                                onClick={() => handleGenerateQuiz('medium', 15)}
+                                disabled={!selectedLecture || loading.quiz}
+                                size="sm"
+                                className="w-full"
+                            >
+                                {loading.quiz ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Medium'}
+                            </Button>
+                            <Button
+                                onClick={() => handleGenerateQuiz('hard', 20)}
+                                disabled={!selectedLecture || loading.quiz}
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                            >
+                                {loading.quiz ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Hard'}
+                            </Button>
                         </div>
                         {results.quiz && (
-                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                                <p className="text-sm text-emerald-900 font-medium">✓ Quiz generated successfully!</p>
-                                <p className="text-xs text-emerald-700 mt-1">
-                                    {results.quiz.question_count} questions • {results.quiz.difficulty}
-                                </p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Flashcard Generation */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Layers className="w-5 h-5 text-purple-600" />
-                            Generate Flashcards
-                        </CardTitle>
-                        <CardDescription>Create flashcards for spaced repetition</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <Label className="text-sm font-medium mb-2 block">Select Type & Style:</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateFlashcards('MIXED', 'CONCISE')}
-                                    disabled={!selectedLecture || loading.flashcards}
-                                    className="justify-start"
-                                >
-                                    {loading.flashcards ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                    Mixed (Concise)
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateFlashcards('DEFINITION', 'CONCISE')}
-                                    disabled={!selectedLecture || loading.flashcards}
-                                    className="justify-start"
-                                >
-                                    Definitions
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateFlashcards('CONCEPT', 'DETAILED')}
-                                    disabled={!selectedLecture || loading.flashcards}
-                                    className="justify-start"
-                                >
-                                    Concepts
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleGenerateFlashcards('APPLICATION', 'DETAILED')}
-                                    disabled={!selectedLecture || loading.flashcards}
-                                    className="justify-start"
-                                >
-                                    Applications
-                                </Button>
-                            </div>
-                        </div>
-                        {results.flashcards && (
-                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                                <p className="text-sm text-emerald-900 font-medium">✓ Flashcards generated!</p>
-                                <p className="text-xs text-emerald-700 mt-1">
-                                    {results.flashcards.count} cards • {results.flashcards.type}
-                                </p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Behavior Detection */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Users className="w-5 h-5 text-amber-600" />
-                            Detect Behaviors
-                        </CardTitle>
-                        <CardDescription>Analyze transcript for behavior events</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                            <Label className="text-sm font-medium mb-2 block">Select Sensitivity:</Label>
-                            <div className="grid grid-cols-3 gap-2">
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleDetectBehaviors('LOW')}
-                                    disabled={!selectedLecture || loading.behaviors}
-                                    className="justify-start"
-                                >
-                                    {loading.behaviors ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                    Low
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleDetectBehaviors('MEDIUM')}
-                                    disabled={!selectedLecture || loading.behaviors}
-                                    className="justify-start"
-                                >
-                                    Medium
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={() => handleDetectBehaviors('HIGH')}
-                                    disabled={!selectedLecture || loading.behaviors}
-                                    className="justify-start"
-                                >
-                                    High
-                                </Button>
-                            </div>
-                        </div>
-                        {results.behaviors && (
-                            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <p className="text-sm text-amber-900 font-medium">
-                                    ✓ Detected {results.behaviors.detected_count} behaviors
-                                </p>
-                                <p className="text-xs text-amber-700 mt-1">
-                                    Pending teacher review
+                            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+                                <p className="text-sm font-medium text-emerald-900 flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Quiz generated successfully!
                                 </p>
                             </div>
                         )}
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Help Text */}
+            <Card className="border-blue-200 bg-blue-50">
+                <CardContent className="pt-6">
+                    <div className="flex items-start gap-3">
+                        <Sparkles className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-medium text-blue-900">How it works</p>
+                            <ul className="text-xs text-blue-700 mt-2 space-y-1 list-disc list-inside">
+                                <li>Select a lecture from the dropdown above</li>
+                                <li>Click any generate button to create AI resources</li>
+                                <li>Resources are automatically published to students</li>
+                                <li>Students can view them in their Notes, Flashcards, and Quizzes pages</li>
+                            </ul>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }
