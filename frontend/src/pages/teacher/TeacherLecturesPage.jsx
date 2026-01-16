@@ -28,11 +28,11 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { lectureService } from '../../services/student.service';
+import api from '../../services/api';
 
 export function TeacherLecturesPage() {
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
-    const [filter, setFilter] = useState('all');
     const [viewMode, setViewMode] = useState('grid');
     const [sortBy, setSortBy] = useState('date');
     const [lectures, setLectures] = useState([]);
@@ -48,6 +48,7 @@ export function TeacherLecturesPage() {
 
     const [formData, setFormData] = useState({
         title: '',
+        classroom: '',
         subject: '',
         description: '',
         duration: '',
@@ -58,11 +59,10 @@ export function TeacherLecturesPage() {
     const [errors, setErrors] = useState({});
 
     const [stats, setStats] = useState({
-        total: 0,
-        approved: 0,
-        pending: 0,
-        drafts: 0
+        total: 0
     });
+
+    const [classrooms, setClassrooms] = useState([]);
 
     const subjects = [
         'Mathematics',
@@ -79,7 +79,18 @@ export function TeacherLecturesPage() {
 
     useEffect(() => {
         fetchLectures();
+        fetchClassrooms();
     }, []);
+
+    const fetchClassrooms = async () => {
+        try {
+            const response = await api.get('/schools/classrooms/');
+            setClassrooms(response.data.results || response.data || []);
+        } catch (error) {
+            console.error('Error fetching classrooms:', error);
+            setClassrooms([]);
+        }
+    };
 
     const fetchLectures = async () => {
         try {
@@ -99,16 +110,13 @@ export function TeacherLecturesPage() {
             setLectures(lecturesList);
 
             setStats({
-                total: lecturesList.length,
-                approved: lecturesList.filter(l => l.transcript_approved_by_teacher).length,
-                pending: lecturesList.filter(l => !l.transcript_approved_by_teacher && l.status !== 'draft').length,
-                drafts: lecturesList.filter(l => l.status === 'draft').length
+                total: lecturesList.length
             });
         } catch (error) {
             console.error('Error fetching lectures:', error);
             // Set empty array on error
             setLectures([]);
-            setStats({ total: 0, approved: 0, pending: 0, drafts: 0 });
+            setStats({ total: 0 });
         } finally {
             setLoading(false);
         }
@@ -120,6 +128,7 @@ export function TeacherLecturesPage() {
         setContentType(null);
         setFormData({
             title: '',
+            classroom: '',
             subject: '',
             description: '',
             duration: '',
@@ -140,6 +149,7 @@ export function TeacherLecturesPage() {
     const validateStep1 = () => {
         const newErrors = {};
         if (!formData.title.trim()) newErrors.title = 'Title is required';
+        if (!formData.classroom) newErrors.classroom = 'Classroom is required';
         if (!formData.subject) newErrors.subject = 'Subject is required';
         if (!formData.duration) newErrors.duration = 'Duration is required';
 
@@ -174,9 +184,16 @@ export function TeacherLecturesPage() {
         setErrors({});
     };
 
-    const handleSubmit = async (isDraft = false) => {
+    const handleSubmit = async () => {
         try {
             setSubmitting(true);
+
+            // Validate classroom exists
+            if (!classrooms || classrooms.length === 0) {
+                setErrors({ submit: 'You must be assigned to a classroom to create lectures. Please contact your administrator.' });
+                setSubmitting(false);
+                return;
+            }
 
             let transcript = '';
             if (contentType === 'text') {
@@ -185,27 +202,63 @@ export function TeacherLecturesPage() {
                 transcript = '[Transcription pending - Speech-to-text feature coming soon]';
             }
 
+            // Classroom ID is a UUID string, not an integer - don't parse it!
+            const classroomId = formData.classroom;
+
+            // Log for debugging
+            console.log('Classroom value:', formData.classroom);
+            console.log('Classroom ID (UUID):', classroomId);
+
+            // Validate classroom ID exists
+            if (!classroomId || classroomId === '') {
+                setErrors({ submit: 'Please select a classroom from the dropdown' });
+                setSubmitting(false);
+                return;
+            }
+
+            // Map frontend fields to backend model fields
             const lectureData = {
+                classroom: classroomId,  // Send UUID as string
                 title: formData.title,
-                subject: formData.subject,
+                chapter: formData.subject || 'General',  // Using subject as chapter
+                topic: formData.title,  // Using title as topic for now
                 description: formData.description,
-                duration: parseInt(formData.duration),
-                tags: formData.tags,
+                duration: parseInt(formData.duration, 10) * 60,  // Convert minutes to seconds
                 transcript: transcript,
-                content_type: contentType,
-                transcript_approved_by_teacher: !isDraft,
-                status: isDraft ? 'draft' : 'pending',
+                recording_type: contentType === 'video' ? 'video' : 'audio',  // Map content_type to recording_type
+                transcript_approved_by_teacher: true,
+                status: 'completed',  // Use 'completed' instead of 'published'
+                is_shared_with_students: true,  // Auto-share with students
             };
 
             console.log('Creating lecture:', lectureData);
 
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Actually create the lecture via API
+            await lectureService.createLecture(lectureData);
 
             closeModal();
             fetchLectures();
         } catch (error) {
             console.error('Error creating lecture:', error);
-            setErrors({ submit: 'Failed to create lecture. Please try again.' });
+
+            // Log detailed error information
+            if (error.response) {
+                console.error('Response status:', error.response.status);
+                console.error('Response data:', error.response.data);
+                console.error('Validation errors:', JSON.stringify(error.response.data, null, 2));
+
+                // Show specific validation errors
+                if (error.response.data) {
+                    const errorMessages = Object.entries(error.response.data)
+                        .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+                        .join('\n');
+                    setErrors({ submit: `Validation errors:\n${errorMessages}` });
+                } else {
+                    setErrors({ submit: 'Failed to create lecture. Please try again.' });
+                }
+            } else {
+                setErrors({ submit: 'Failed to create lecture. Please try again.' });
+            }
         } finally {
             setSubmitting(false);
         }
@@ -224,14 +277,7 @@ export function TeacherLecturesPage() {
     };
 
     const filteredLectures = lectures.filter(lecture => {
-        const matchesSearch = lecture.title?.toLowerCase().includes(searchTerm.toLowerCase());
-
-        if (filter === 'all') return matchesSearch;
-        if (filter === 'approved') return matchesSearch && lecture.transcript_approved_by_teacher;
-        if (filter === 'pending') return matchesSearch && !lecture.transcript_approved_by_teacher && lecture.status !== 'draft';
-        if (filter === 'drafts') return matchesSearch && lecture.status === 'draft';
-
-        return matchesSearch;
+        return lecture.title?.toLowerCase().includes(searchTerm.toLowerCase());
     });
 
     const sortedLectures = [...filteredLectures].sort((a, b) => {
@@ -256,13 +302,7 @@ export function TeacherLecturesPage() {
     };
 
     const getStatusBadge = (lecture) => {
-        if (lecture.status === 'draft') {
-            return <Badge variant="secondary">Draft</Badge>;
-        }
-        if (lecture.transcript_approved_by_teacher) {
-            return <Badge variant="success">Approved</Badge>;
-        }
-        return <Badge variant="warning">Pending</Badge>;
+        return <Badge variant="success">Published</Badge>;
     };
 
     const formatDate = (dateString) => {
@@ -289,65 +329,21 @@ export function TeacherLecturesPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                                <BookOpen className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-600">Total Lectures</p>
-                                <p className="text-2xl font-semibold text-slate-900">{stats.total}</p>
-                            </div>
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <BookOpen className="w-5 h-5 text-blue-600" />
                         </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                                <CheckCircle className="w-5 h-5 text-emerald-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-600">Approved</p>
-                                <p className="text-2xl font-semibold text-slate-900">{stats.approved}</p>
-                            </div>
+                        <div>
+                            <p className="text-sm text-slate-600">Total Lectures</p>
+                            <p className="text-2xl font-semibold text-slate-900">{stats.total}</p>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </CardContent>
+            </Card>
 
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                                <Clock className="w-5 h-5 text-amber-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-600">Pending</p>
-                                <p className="text-2xl font-semibold text-slate-900">{stats.pending}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                                <FileText className="w-5 h-5 text-slate-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-600">Drafts</p>
-                                <p className="text-2xl font-semibold text-slate-900">{stats.drafts}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Filters */}
+            {/* Search and Controls */}
             <Card>
                 <CardContent className="pt-6">
                     <div className="flex flex-col md:flex-row gap-4">
@@ -359,37 +355,6 @@ export function TeacherLecturesPage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-10"
                             />
-                        </div>
-
-                        <div className="flex gap-2 flex-wrap">
-                            <Button
-                                variant={filter === 'all' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setFilter('all')}
-                            >
-                                All ({stats.total})
-                            </Button>
-                            <Button
-                                variant={filter === 'approved' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setFilter('approved')}
-                            >
-                                Approved ({stats.approved})
-                            </Button>
-                            <Button
-                                variant={filter === 'pending' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setFilter('pending')}
-                            >
-                                Pending ({stats.pending})
-                            </Button>
-                            <Button
-                                variant={filter === 'drafts' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setFilter('drafts')}
-                            >
-                                Drafts ({stats.drafts})
-                            </Button>
                         </div>
 
                         <select
@@ -537,6 +502,29 @@ export function TeacherLecturesPage() {
                                             className={errors.title ? 'border-red-500' : ''}
                                         />
                                         {errors.title && <p className="text-sm text-red-600 mt-1">{errors.title}</p>}
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="classroom">Classroom *</Label>
+                                        <select
+                                            id="classroom"
+                                            value={formData.classroom}
+                                            onChange={(e) => setFormData({ ...formData, classroom: e.target.value })}
+                                            className={`w-full px-3 py-2 border rounded-md ${errors.classroom ? 'border-red-500' : 'border-slate-300'}`}
+                                        >
+                                            <option value="">Select a classroom</option>
+                                            {classrooms.map((classroom) => (
+                                                <option key={classroom.id} value={classroom.id}>
+                                                    {classroom.grade} - {classroom.section} ({classroom.subject})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.classroom && <p className="text-sm text-red-600 mt-1">{errors.classroom}</p>}
+                                        {classrooms.length === 0 && (
+                                            <p className="text-sm text-amber-600 mt-1">
+                                                ⚠️ No classrooms found. Please contact your administrator.
+                                            </p>
+                                        )}
                                     </div>
 
                                     <div>
@@ -855,16 +843,10 @@ export function TeacherLecturesPage() {
                                         <ChevronRight className="w-4 h-4 ml-2" />
                                     </Button>
                                 ) : (
-                                    <>
-                                        <Button variant="outline" onClick={() => handleSubmit(true)} disabled={submitting}>
-                                            {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                            Save as Draft
-                                        </Button>
-                                        <Button onClick={() => handleSubmit(false)} disabled={submitting}>
-                                            {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                                            Submit for Approval
-                                        </Button>
-                                    </>
+                                    <Button onClick={handleSubmit} disabled={submitting}>
+                                        {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                                        Create Lecture
+                                    </Button>
                                 )}
                             </div>
                         </div>

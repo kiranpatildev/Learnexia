@@ -71,27 +71,31 @@ export const leaderboardService = {
 
 export const lectureService = {
     async getLectures(params = {}) {
-        const response = await api.get('/lectures/', { params });
+        const response = await api.get('/lectures/lectures/', { params });
         return response.data;
     },
 
     async getLecture(id) {
-        const response = await api.get(`/lectures/${id}/`);
+        const response = await api.get(`/lectures/lectures/${id}/`);
         return response.data;
     },
 
+    async getLectureById(id) {
+        return this.getLecture(id);
+    },
+
     async createLecture(data) {
-        const response = await api.post('/lectures/', data);
+        const response = await api.post('/lectures/lectures/', data);
         return response.data;
     },
 
     async updateLecture(id, data) {
-        const response = await api.patch(`/lectures/${id}/`, data);
+        const response = await api.patch(`/lectures/lectures/${id}/`, data);
         return response.data;
     },
 
     async deleteLecture(id) {
-        const response = await api.delete(`/lectures/${id}/`);
+        const response = await api.delete(`/lectures/lectures/${id}/`);
         return response.data;
     },
 };

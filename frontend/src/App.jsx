@@ -5,6 +5,7 @@ import { StudentLayout } from './layouts/StudentLayout';
 import { TeacherLayout } from './layouts/TeacherLayout';
 import { ParentLayout } from './layouts/ParentLayout';
 import { StudentDashboard } from './pages/student/StudentDashboard';
+import { StudentLectureDetail } from './pages/student/StudentLectureDetail';
 import { StudentNotesPage } from './pages/student/StudentNotesPage';
 import { StudentQuizzesPage } from './pages/student/StudentQuizzesPage';
 import { StudentAssignmentsPage } from './pages/student/StudentAssignmentsPage';
@@ -67,6 +68,7 @@ function App() {
             }
           >
             <Route path="dashboard" element={<StudentDashboard />} />
+            <Route path="lectures/:id" element={<StudentLectureDetail />} />
             <Route path="notes" element={<StudentNotesPage />} />
             <Route path="quizzes" element={<StudentQuizzesPage />} />
             <Route path="assignments" element={<StudentAssignmentsPage />} />

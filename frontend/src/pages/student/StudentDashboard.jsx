@@ -3,12 +3,15 @@ import { StatCard } from '../../components/common/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { BookOpen, Trophy, Flame, Target, TrendingUp } from 'lucide-react';
+import { BookOpen, Trophy, Flame, Target, TrendingUp, Clock, User, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { lectureService } from '../../services/student.service';
 
 export function StudentDashboard() {
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(false); // Changed to false to show content immediately
+    const [loading, setLoading] = useState(true);
+    const [lectures, setLectures] = useState([]);
+    const [error, setError] = useState(null);
 
     // Simple mock data for now
     const stats = {
@@ -18,6 +21,50 @@ export function StudentDashboard() {
         averageScore: 0,
         xp: 0,
         streak: 0,
+    };
+
+    useEffect(() => {
+        fetchLectures();
+    }, []);
+
+    const fetchLectures = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await lectureService.getLectures({
+                ordering: '-created_at',
+                limit: 5
+            });
+            setLectures(response.results || response || []);
+        } catch (error) {
+            console.error('Error fetching lectures:', error);
+            setError('Failed to load lectures');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatDuration = (seconds) => {
+        if (!seconds) return 'N/A';
+        const minutes = Math.floor(seconds / 60);
+        return `${minutes} min`;
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    const getRecordingTypeDisplay = (lecture) => {
+        // If there's a transcript and no audio/video file, it's a text lecture
+        if (lecture.transcript && !lecture.audio_file && !lecture.video_file) {
+            return { icon: '📝', label: 'Text' };
+        }
+        if (lecture.recording_type === 'video') {
+            return { icon: '🎥', label: 'Video' };
+        }
+        return { icon: '🎙️', label: 'Audio' };
     };
 
     return (
@@ -80,13 +127,65 @@ export function StudentDashboard() {
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-center py-12">
-                                <BookOpen className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-slate-900 mb-2">No lecture notes yet</h3>
-                                <p className="text-sm text-slate-600">
-                                    Notes will appear here once your teacher generates them
-                                </p>
-                            </div>
+                            {loading ? (
+                                <div className="text-center py-12">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                                    <p className="text-sm text-slate-600 mt-4">Loading lectures...</p>
+                                </div>
+                            ) : error ? (
+                                <div className="text-center py-12">
+                                    <BookOpen className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                                    <h3 className="text-lg font-medium text-slate-900 mb-2">Error loading lectures</h3>
+                                    <p className="text-sm text-slate-600 mb-4">{error}</p>
+                                    <Button onClick={fetchLectures} size="sm">Try Again</Button>
+                                </div>
+                            ) : lectures.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <BookOpen className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                    <h3 className="text-lg font-medium text-slate-900 mb-2">No lecture notes yet</h3>
+                                    <p className="text-sm text-slate-600">
+                                        Notes will appear here once your teacher creates lectures
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {lectures.map((lecture) => (
+                                        <div
+                                            key={lecture.id}
+                                            className="p-4 border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"
+                                            onClick={() => navigate(`/student/lectures/${lecture.id}`)}
+                                        >
+                                            <div className="flex items-start justify-between mb-2">
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold text-slate-900 mb-1">{lecture.title}</h4>
+                                                    <p className="text-sm text-slate-600 line-clamp-2">{lecture.description || 'No description'}</p>
+                                                </div>
+                                                <Badge variant="outline" className="ml-4">
+                                                    {getRecordingTypeDisplay(lecture).icon} {getRecordingTypeDisplay(lecture).label}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex items-center gap-4 text-xs text-slate-500 mt-3">
+                                                <div className="flex items-center gap-1">
+                                                    <BookOpen className="w-3.5 h-3.5" />
+                                                    <span>{lecture.classroom_detail?.subject?.name || lecture.chapter}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <User className="w-3.5 h-3.5" />
+                                                    <span>{lecture.teacher_detail?.first_name} {lecture.teacher_detail?.last_name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    <span>{formatDuration(lecture.duration)}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <Calendar className="w-3.5 h-3.5" />
+                                                    <span>{formatDate(lecture.created_at)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
