@@ -62,11 +62,103 @@ The following apps have their models created but need serializers, views, and UR
 - **notifications** - Notification system
 - **reports** - Report generation
 
+## 📚 Documentation
+
+Comprehensive documentation is available in the `/docs` directory:
+
+### Quick Links
+- **[Quick Start Guide](docs/01_setup/QUICK_START.md)** - Get up and running in minutes
+- **[Setup Guide](docs/01_setup/ENV_SETUP_GUIDE.md)** - Detailed environment setup
+- **[Windows Installation](docs/01_setup/WINDOWS_INSTALL.md)** - Windows-specific instructions
+
+### Architecture & Implementation
+- **[Implementation Guide](docs/02_architecture/IMPLEMENTATION_GUIDE.md)** - Complete implementation details
+- **[Models Reference](docs/02_architecture/MODELS_REFERENCE.md)** - Database schema documentation
+- **[API Routes](docs/02_architecture/API_ROUTES_COMPLETE.md)** - All API endpoints
+- **[Flow Analysis](docs/02_architecture/COMPLETE_FLOW_ANALYSIS.md)** - Application flow diagrams
+
+### Frontend
+- **[Frontend Quickstart](docs/03_frontend/FRONTEND_QUICKSTART.md)** - Frontend setup guide
+- **[Frontend Development Plan](docs/03_frontend/FRONTEND_DEVELOPMENT_PLAN.md)** - Development roadmap
+- **[Dashboard Design](docs/03_frontend/DASHBOARD_EXACT_MATCH.md)** - Dashboard implementation
+- **[Flashcards Feature](docs/03_frontend/FLASHCARDS_FEATURE_COMPLETE.md)** - Flashcards system
+
+### Backend Features
+- **[Lectures System](docs/04_backend/LECTURES_MODULE_COMPLETE.md)** - Lecture management
+- **[Notes Module](docs/04_backend/NOTES_MODULE_COMPLETE.md)** - Notes system
+- **[Teacher Resources](docs/04_backend/ALL_TEACHER_PAGES_COMPLETE.md)** - Teacher features
+- **[Parent Pages](docs/04_backend/ALL_PARENT_PAGES_COMPLETE.md)** - Parent dashboard
+
+### AI Features
+- **[AI Features Summary](docs/05_ai/AI_FEATURES_MASTER_SUMMARY.md)** - AI capabilities overview
+- **[Transcription Setup](docs/05_ai/TRANSCRIPTION_SETUP_GUIDE.md)** - Speech-to-text setup
+- **[Whisper Integration](docs/05_ai/LOCAL_WHISPER_TRANSCRIPTION.md)** - Local Whisper setup
+- **[AI Notes Generation](docs/05_ai/AI_NOTES_GENERATION_COMPLETE.md)** - Auto-generate notes
+- **[AI Flashcards](docs/05_ai/AI_FLASHCARD_GENERATOR_COMPLETE.md)** - Auto-generate flashcards
+- **[AI Quiz Generator](docs/05_ai/AI_QUIZ_GENERATOR_COMPLETE.md)** - Auto-generate quizzes
+
+### Project Status
+- **[Project Status](docs/00_overview/PROJECT_STATUS.md)** - Current project state
+- **[Project Complete](docs/00_overview/PROJECT_COMPLETE.md)** - Completed features
+- **[Phase 1 Summary](docs/00_overview/PHASE_1_COMPLETE.md)** - Phase 1 achievements
+- **[Remaining Features](docs/00_overview/REMAINING_FEATURES_ANALYSIS.md)** - Upcoming work
+
+### Troubleshooting
+- **[Bug Fixes](docs/06_logs_and_fixes/)** - All bug fixes and solutions
+- **[Common Issues](docs/06_logs_and_fixes/ALL_ISSUES_FIXED.md)** - Resolved issues
+- **[Emergency Fixes](docs/06_logs_and_fixes/EMERGENCY_FIX.md)** - Critical fixes
+
+## 📁 Repository Structure
+
+This repository follows a professional, production-ready structure:
+
+```
+premium_edu_platform/
+├── backend/                    # Django backend application
+│   ├── apps/                   # Django apps (accounts, schools, lectures, etc.)
+│   ├── config/                 # Django settings and configuration
+│   ├── static/                 # Static files
+│   ├── manage.py               # Django management script
+│   └── requirements/           # Python dependencies
+│       ├── requirements.txt           # Full dependencies
+│       ├── requirements-minimal.txt   # Minimal setup
+│       └── requirements-ml.txt        # ML/AI dependencies
+│
+├── frontend/                   # React TypeScript frontend
+│   ├── src/                    # Source code
+│   ├── public/                 # Public assets
+│   └── package.json            # Node dependencies
+│
+├── docs/                       # Project documentation
+│   ├── 00_overview/            # Project status and phases
+│   ├── 01_setup/               # Installation guides
+│   ├── 02_architecture/        # System architecture
+│   ├── 03_frontend/            # Frontend documentation
+│   ├── 04_backend/             # Backend documentation
+│   ├── 05_ai/                  # AI features documentation
+│   └── 06_logs_and_fixes/      # Troubleshooting guides
+│
+├── scripts/                    # Automation and setup scripts
+│   ├── windows/                # Windows batch scripts
+│   └── python/                 # Python utility scripts
+│
+├── docker/                     # Docker configuration
+│   ├── Dockerfile              # Docker image definition
+│   └── docker-compose.yml      # Multi-container setup
+│
+├── .env.example                # Environment variables template
+├── .gitignore                  # Git ignore rules
+└── README.md                   # This file
+```
+
 ## 🚀 Quick Start
 
 ### Option 1: Using Docker (Recommended)
 
 ```bash
+# Navigate to docker directory
+cd docker
+
 # Start all services
 docker-compose up -d
 
@@ -87,11 +179,12 @@ python -m venv venv
 venv\Scripts\activate  # Windows
 # source venv/bin/activate  # Mac/Linux
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# 2. Install backend dependencies
+cd backend
+pip install -r requirements/requirements.txt
 
 # 3. Set up environment
-copy .env.example .env
+copy ../.env.example ../.env
 # Edit .env with your settings
 
 # 4. Create database
@@ -104,8 +197,13 @@ python manage.py migrate
 # 6. Create superuser
 python manage.py createsuperuser
 
-# 7. Run server
+# 7. Run backend server
 python manage.py runserver
+
+# 8. In a new terminal, install and run frontend
+cd ../frontend
+npm install
+npm run dev
 ```
 
 ## 📁 Project Structure
