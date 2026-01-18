@@ -11,6 +11,7 @@ import { StudentFlashcardsPage } from './pages/student/StudentFlashcardsPage';
 import { FlashcardStudyPage } from './pages/student/FlashcardStudyPage';
 import { StudentQuizzesPage } from './pages/student/StudentQuizzesPage';
 import { StudentAssignmentsPage } from './pages/student/StudentAssignmentsPage';
+import { StudentAttendancePage } from './pages/student/StudentAttendancePage';
 import { StudentLeaderboardPage } from './pages/student/StudentLeaderboardPage';
 import { StudentProfilePage } from './pages/student/StudentProfilePage';
 import { TeacherDashboard } from './pages/teacher/TeacherDashboard';
@@ -20,6 +21,9 @@ import { TeacherAssignmentsPage } from './pages/teacher/TeacherAssignmentsPage';
 import { TeacherQuizzesPage } from './pages/teacher/TeacherQuizzesPage';
 import { TeacherStudentsPage } from './pages/teacher/TeacherStudentsPage';
 import { TeacherAnalyticsPage } from './pages/teacher/TeacherAnalyticsPage';
+import { BehaviorManagementPage } from './pages/teacher/BehaviorManagementPage';
+import { AttendancePage } from './pages/teacher/AttendancePage';
+import { MessagesPage } from './pages/teacher/MessagesPage';
 import { TeacherProfilePage } from './pages/teacher/TeacherProfilePage';
 import { ParentDashboard } from './pages/parent/ParentDashboard';
 import { ParentChildrenPage } from './pages/parent/ParentChildrenPage';
@@ -76,6 +80,7 @@ function App() {
             <Route path="flashcards/:setId/study" element={<FlashcardStudyPage />} />
             <Route path="quizzes" element={<StudentQuizzesPage />} />
             <Route path="assignments" element={<StudentAssignmentsPage />} />
+            <Route path="attendance" element={<StudentAttendancePage />} />
             <Route path="leaderboard" element={<StudentLeaderboardPage />} />
             <Route path="profile" element={<StudentProfilePage />} />
           </Route>
@@ -95,6 +100,9 @@ function App() {
             <Route path="assignments" element={<TeacherAssignmentsPage />} />
             <Route path="quizzes" element={<TeacherQuizzesPage />} />
             <Route path="students" element={<TeacherStudentsPage />} />
+            <Route path="attendance" element={<AttendancePage />} />
+            <Route path="behavior" element={<BehaviorManagementPage />} />
+            <Route path="messages" element={<MessagesPage />} />
             <Route path="analytics" element={<TeacherAnalyticsPage />} />
             <Route path="profile" element={<TeacherProfilePage />} />
           </Route>

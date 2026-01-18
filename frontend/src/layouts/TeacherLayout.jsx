@@ -9,7 +9,10 @@ import {
     Users,
     BarChart3,
     User,
-    Sparkles
+    Sparkles,
+    AlertCircle,
+    Calendar,
+    MessageSquare
 } from 'lucide-react';
 
 const teacherNavItems = [
@@ -19,6 +22,9 @@ const teacherNavItems = [
     { label: 'Assignments', path: '/teacher/assignments', icon: FileText },
     { label: 'Quizzes', path: '/teacher/quizzes', icon: ClipboardList },
     { label: 'Students', path: '/teacher/students', icon: Users },
+    { label: 'Attendance', path: '/teacher/attendance', icon: Calendar },
+    { label: 'Behavior', path: '/teacher/behavior', icon: AlertCircle },
+    { label: 'Messages', path: '/teacher/messages', icon: MessageSquare },
     { label: 'Analytics', path: '/teacher/analytics', icon: BarChart3 },
     { label: 'Profile', path: '/teacher/profile', icon: User },
 ];

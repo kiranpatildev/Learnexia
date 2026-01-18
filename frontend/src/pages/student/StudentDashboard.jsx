@@ -16,7 +16,8 @@ import {
     Bell,
     Loader2,
     Clock,
-    ChevronRight
+    ChevronRight,
+    CheckCircle
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
@@ -32,39 +33,73 @@ export function StudentDashboard() {
         nextLevelXP: 3000,
         dayStreak: 8,
         totalXP: 2450,
-        achievements: 3
+        achievements: 3,
+        attendanceRate: 0
     });
 
     useEffect(() => {
-        fetchDashboardData();
-    }, []);
+        console.log('StudentDashboard useEffect triggered, user:', user);
+        console.log('user?.id:', user?.id);
 
-    const fetchDashboardData = async () => {
-        try {
-            setLoading(true);
+        const fetchData = async () => {
+            if (!user?.id) {
+                console.log('No user ID, setting loading to false');
+                setLoading(false);
+                return;
+            }
 
-            // Fetch lectures
-            const lecturesRes = await api.get('/lectures/lectures/', {
-                params: { limit: 5, ordering: '-created_at' }
-            });
-            const lectureData = lecturesRes.data.results || lecturesRes.data || [];
-            setLectures(lectureData);
+            console.log('Fetching dashboard data for user:', user.id);
 
-            // Update stats from user data if available
-            if (user) {
+            try {
+                setLoading(true);
+
+                // Fetch lectures
+                const lecturesRes = await api.get('/lectures/lectures/', {
+                    params: { limit: 5, ordering: '-created_at' }
+                });
+                const lectureData = lecturesRes.data.results || lecturesRes.data || [];
+                console.log('Fetched lectures:', lectureData.length);
+                setLectures(lectureData);
+
+                // Update stats from user data
                 setStats(prev => ({
                     ...prev,
                     currentXP: user.xp || prev.currentXP,
                     totalXP: user.xp || prev.totalXP,
                     dayStreak: user.streak || prev.dayStreak
                 }));
+
+                // Fetch attendance records
+                try {
+                    const attendanceRes = await api.get('/attendance/records/', {
+                        params: { student: user.id }
+                    });
+                    const attendanceData = attendanceRes.data.results || attendanceRes.data || [];
+                    console.log('Fetched attendance records:', attendanceData.length);
+
+                    // Calculate attendance rate
+                    const totalRecords = attendanceData.length;
+                    const presentRecords = attendanceData.filter(r => r.status === 'present').length;
+                    const attendanceRate = totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : 0;
+
+                    setStats(prev => ({
+                        ...prev,
+                        attendanceRate
+                    }));
+                } catch (err) {
+                    console.error('Error fetching attendance:', err);
+                }
+
+                console.log('Dashboard data fetched successfully');
+            } catch (error) {
+                console.error('Error fetching dashboard data:', error);
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            console.error('Error fetching dashboard data:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
+
+        fetchData();
+    }, [user?.id]); // Only re-run when user ID changes
 
     const formatDate = (dateString) => {
         if (!dateString) return '';
@@ -277,6 +312,20 @@ export function StudentDashboard() {
                                         <div className="flex items-center gap-3">
                                             <BookOpen className="w-5 h-5 text-gray-900" />
                                             <span className="font-semibold text-gray-900">Browse Lectures</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/student/attendance')}
+                                        className="w-full p-4 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <CheckCircle className="w-5 h-5 text-emerald-600" />
+                                                <span className="font-semibold text-gray-900">Attendance Rate</span>
+                                            </div>
+                                            <span className="text-2xl font-bold text-emerald-600">
+                                                {stats.attendanceRate || 0}%
+                                            </span>
                                         </div>
                                     </button>
                                     <button

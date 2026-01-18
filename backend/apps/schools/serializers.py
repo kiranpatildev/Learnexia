@@ -63,6 +63,7 @@ class ClassroomEnrollmentSerializer(serializers.ModelSerializer):
     """
     student_name = serializers.CharField(source='student.get_full_name', read_only=True)
     classroom_name = serializers.CharField(source='classroom.__str__', read_only=True)
+    user = UserSerializer(source='student', read_only=True)  # Full student user object
     
     class Meta:
         model = ClassroomEnrollment

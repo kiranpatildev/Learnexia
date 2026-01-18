@@ -7,6 +7,7 @@ import {
     Layers,
     ClipboardList,
     FileText,
+    Calendar,
     Trophy,
     User
 } from 'lucide-react';
@@ -17,6 +18,7 @@ const studentNavItems = [
     { label: 'Flashcards', path: '/student/flashcards', icon: Layers },
     { label: 'Quizzes', path: '/student/quizzes', icon: ClipboardList },
     { label: 'Assignments', path: '/student/assignments', icon: FileText },
+    { label: 'Attendance', path: '/student/attendance', icon: Calendar },
     { label: 'Leaderboard', path: '/student/leaderboard', icon: Trophy },
     { label: 'Profile', path: '/student/profile', icon: User },
 ];

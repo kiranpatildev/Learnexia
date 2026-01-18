@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StatCard } from '../../components/common/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -12,16 +12,56 @@ import {
     Sparkles
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../services/api';
 
 export function TeacherDashboard() {
     const navigate = useNavigate();
-
-    // Simple stats for now
-    const stats = {
+    const [stats, setStats] = useState({
         todayAttendance: 0,
         pendingGrading: 0,
         lecturesThisWeek: 0,
         studentAlerts: 0,
+    });
+    const [lectures, setLectures] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, []);
+
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+
+            // Fetch lectures
+            const lecturesRes = await api.get('/lectures/lectures/', {
+                params: { ordering: '-created_at', page_size: 5 }
+            });
+            const lectureData = lecturesRes.data.results || lecturesRes.data || [];
+            setLectures(lectureData);
+
+            // Fetch assignments for pending grading count
+            const assignmentsRes = await api.get('/assignments/assignments/');
+            const assignments = assignmentsRes.data.results || assignmentsRes.data || [];
+
+            // Fetch behavior incidents for alerts
+            const incidentsRes = await api.get('/behavior/incidents/', {
+                params: { status: 'pending' }
+            });
+            const incidents = incidentsRes.data.results || incidentsRes.data || [];
+
+            // Update stats
+            setStats({
+                todayAttendance: 0, // Would need attendance API
+                pendingGrading: assignments.length,
+                lecturesThisWeek: lectureData.length,
+                studentAlerts: incidents.length,
+            });
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -78,16 +118,47 @@ export function TeacherDashboard() {
                             </Button>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-center py-12">
-                                <BookOpen className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-slate-900 mb-2">No lectures yet</h3>
-                                <p className="text-sm text-slate-600 mb-4">
-                                    Create your first lecture to get started
-                                </p>
-                                <Button onClick={() => navigate('/teacher/lectures')}>
-                                    Create Lecture
-                                </Button>
-                            </div>
+                            {loading ? (
+                                <div className="text-center py-12">
+                                    <p className="text-slate-500">Loading...</p>
+                                </div>
+                            ) : lectures.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <BookOpen className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                                    <h3 className="text-lg font-medium text-slate-900 mb-2">No lectures yet</h3>
+                                    <p className="text-sm text-slate-600 mb-4">
+                                        Create your first lecture to get started
+                                    </p>
+                                    <Button onClick={() => navigate('/teacher/lectures')}>
+                                        Create Lecture
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {lectures.map((lecture) => (
+                                        <div
+                                            key={lecture.id}
+                                            className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
+                                            onClick={() => navigate('/teacher/lectures')}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                                    <BookOpen className="w-5 h-5 text-blue-600" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-slate-900">{lecture.title}</p>
+                                                    <p className="text-sm text-slate-500">
+                                                        {lecture.chapter || 'No chapter'} • {lecture.topic || 'No topic'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                                                {lecture.status}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

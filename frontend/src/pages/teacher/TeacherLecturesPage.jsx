@@ -39,7 +39,7 @@ export function TeacherLecturesPage() {
             setLoading(true);
             const [lecturesRes, classroomsRes] = await Promise.all([
                 api.get('/lectures/lectures/', { params: { ordering: '-created_at' } }),
-                api.get('/classrooms/classrooms/')
+                api.get('/schools/classrooms/')
             ]);
 
             const lectureData = lecturesRes.data.results || lecturesRes.data || [];
