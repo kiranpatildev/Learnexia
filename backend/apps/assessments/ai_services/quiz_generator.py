@@ -24,7 +24,8 @@ class QuizGeneratorService:
     
     def __init__(self):
         """Initialize the quiz generator service"""
-        self.model = GeminiConfig.get_model()
+        self.client = GeminiConfig.get_client()
+        self.model_name = GeminiConfig.MODEL_NAME
     
     def generate_quiz(self, lecture, difficulty: str = 'MEDIUM', length: int = 10) -> Dict:
         """
@@ -73,10 +74,12 @@ class QuizGeneratorService:
                 'max_output_tokens': 8192,
             }
             
-            response = self.model.generate_content(
-                prompt,
-                generation_config=generation_config
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=generation_config
             )
+            
             
             # Process response
             if not response or not response.text:
@@ -84,16 +87,55 @@ class QuizGeneratorService:
             
             quiz_content = response.text.strip()
             
-            logger.info(f"✅ Quiz generated successfully: {difficulty} level, {length} questions")
+            # Parse JSON response
+            import json
+            import re
             
-            return {
-                'success': True,
-                'quiz_content': quiz_content,
-                'difficulty': difficulty,
-                'length': length,
-                'topic': topic,
-                'error': None
-            }
+            # Extract JSON from markdown code blocks if present
+            json_match = re.search(r'```(?:json)?\s*(\{.*?\}|\[.*?\])\s*```', quiz_content, re.DOTALL)
+            if json_match:
+                quiz_content = json_match.group(1)
+            
+            # Clean up the content
+            quiz_content = quiz_content.strip()
+            if quiz_content.startswith('```'):
+                quiz_content = quiz_content.split('\n', 1)[1]
+            if quiz_content.endswith('```'):
+                quiz_content = quiz_content.rsplit('\n', 1)[0]
+            
+            try:
+                quiz_data = json.loads(quiz_content)
+                
+                # Handle both array and object responses
+                if isinstance(quiz_data, dict) and 'questions' in quiz_data:
+                    questions = quiz_data['questions']
+                elif isinstance(quiz_data, list):
+                    questions = quiz_data
+                else:
+                    questions = [quiz_data]
+                
+                logger.info(f"✅ Quiz generated successfully: {difficulty} level, {len(questions)} questions")
+                
+                return {
+                    'success': True,
+                    'questions': questions,
+                    'count': len(questions),
+                    'difficulty': difficulty,
+                    'length': length,
+                    'topic': topic,
+                    'error': None
+                }
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse quiz JSON: {str(e)}")
+                logger.error(f"Raw content: {quiz_content[:500]}")
+                return {
+                    'success': False,
+                    'error': f'Failed to parse quiz response: {str(e)}',
+                    'quiz_content': quiz_content,
+                    'questions': [],
+                    'count': 0
+                }
         
         except Exception as e:
             logger.error(f"Quiz generation failed: {str(e)}", exc_info=True)

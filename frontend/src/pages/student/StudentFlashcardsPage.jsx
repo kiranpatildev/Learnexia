@@ -26,18 +26,27 @@ export function StudentFlashcardsPage() {
     const fetchFlashcardSets = async () => {
         try {
             setLoading(true);
+            setError(null);
+
+            console.log('[Flashcards] Fetching flashcard sets...');
+
             // Fetch flashcard sets from enrolled classrooms
             const response = await api.get('/flashcards/flashcard-sets/', {
                 params: {
-                    published: true,
                     ordering: '-created_at'
                 }
             });
 
+            console.log('[Flashcards] Response:', response.data);
+
             const sets = response.data.results || response.data || [];
+            console.log('[Flashcards] Parsed sets:', sets);
+            console.log('[Flashcards] Number of sets:', sets.length);
+
             setFlashcardSets(sets);
         } catch (err) {
-            console.error('Error fetching flashcard sets:', err);
+            console.error('[Flashcards] Error fetching flashcard sets:', err);
+            console.error('[Flashcards] Error response:', err.response?.data);
             setError('Failed to load flashcard sets');
         } finally {
             setLoading(false);

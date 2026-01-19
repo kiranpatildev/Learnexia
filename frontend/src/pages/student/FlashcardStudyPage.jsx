@@ -37,12 +37,24 @@ export function FlashcardStudyPage() {
     const fetchFlashcardSet = async () => {
         try {
             setLoading(true);
+            console.log('[FlashcardStudy] Fetching flashcard set:', setId);
+
             const response = await api.get(`/flashcards/flashcard-sets/${setId}/`);
+            console.log('[FlashcardStudy] Flashcard set:', response.data);
             setFlashcardSet(response.data);
 
-            // Fetch flashcards for this set
-            const cardsResponse = await api.get(`/flashcards/flashcard-sets/${setId}/flashcards/`);
+            // Fetch flashcards for this set using the flashcards endpoint with filter
+            console.log('[FlashcardStudy] Fetching flashcards for set:', setId);
+            const cardsResponse = await api.get(`/flashcards/flashcards/`, {
+                params: {
+                    flashcard_set: setId,
+                    ordering: 'order'
+                }
+            });
+
+            console.log('[FlashcardStudy] Flashcards response:', cardsResponse.data);
             const cards = cardsResponse.data.results || cardsResponse.data || [];
+            console.log('[FlashcardStudy] Number of flashcards:', cards.length);
             setFlashcards(cards);
 
             // Initialize mastered cards from backend if available
@@ -51,7 +63,8 @@ export function FlashcardStudyPage() {
             );
             setMasteredCards(masteredIds);
         } catch (error) {
-            console.error('Error fetching flashcard set:', error);
+            console.error('[FlashcardStudy] Error fetching flashcard set:', error);
+            console.error('[FlashcardStudy] Error response:', error.response?.data);
         } finally {
             setLoading(false);
         }
@@ -243,17 +256,26 @@ export function FlashcardStudyPage() {
                         </CardContent>
                     </Card>
                 ) : (
-                    /* Flashcard */
-                    <div className="perspective-1000">
-                        <Card
-                            className={`bg-slate-900 border-slate-800 cursor-pointer transition-all duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''
-                                }`}
+                    /* Flashcard with proper 3D flip */
+                    <div className="relative" style={{ perspective: '1000px' }}>
+                        <div
+                            className="relative transition-transform duration-700 cursor-pointer"
+                            style={{
+                                transformStyle: 'preserve-3d',
+                                transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                                minHeight: '400px'
+                            }}
                             onClick={handleFlip}
-                            style={{ minHeight: '400px' }}
                         >
-                            <CardContent className="p-12 flex flex-col items-center justify-center min-h-[400px]">
-                                {!isFlipped ? (
-                                    /* Front - Question */
+                            {/* Front Side - Question */}
+                            <Card
+                                className={`absolute inset-0 bg-slate-900 border-slate-800 ${isFlipped ? 'invisible' : 'visible'}`}
+                                style={{
+                                    backfaceVisibility: 'hidden',
+                                    WebkitBackfaceVisibility: 'hidden'
+                                }}
+                            >
+                                <CardContent className="p-12 flex flex-col items-center justify-center min-h-[400px]">
                                     <div className="text-center">
                                         <p className="text-sm text-cyan-400 mb-4">Question</p>
                                         <h2 className="text-3xl font-bold mb-6">
@@ -261,8 +283,19 @@ export function FlashcardStudyPage() {
                                         </h2>
                                         <p className="text-slate-500 text-sm">Click to reveal answer</p>
                                     </div>
-                                ) : (
-                                    /* Back - Answer */
+                                </CardContent>
+                            </Card>
+
+                            {/* Back Side - Answer */}
+                            <Card
+                                className={`absolute inset-0 bg-slate-900 border-slate-800 ${!isFlipped ? 'invisible' : 'visible'}`}
+                                style={{
+                                    backfaceVisibility: 'hidden',
+                                    WebkitBackfaceVisibility: 'hidden',
+                                    transform: 'rotateY(180deg)'
+                                }}
+                            >
+                                <CardContent className="p-12 flex flex-col items-center justify-center min-h-[400px]">
                                     <div className="text-center">
                                         <p className="text-sm text-emerald-400 mb-4">Answer</p>
                                         <h2 className="text-2xl font-semibold mb-6">
@@ -274,9 +307,9 @@ export function FlashcardStudyPage() {
                                             </p>
                                         )}
                                     </div>
-                                )}
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        </div>
                     </div>
                 )}
 

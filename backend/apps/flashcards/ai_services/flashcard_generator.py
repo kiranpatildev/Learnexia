@@ -26,7 +26,8 @@ class FlashcardGeneratorService:
     
     def __init__(self):
         """Initialize the flashcard generator service"""
-        self.model = GeminiConfig.get_model()
+        self.client = GeminiConfig.get_client()
+        self.model_name = GeminiConfig.MODEL_NAME
     
     def generate_flashcards(
         self, 
@@ -88,9 +89,10 @@ class FlashcardGeneratorService:
                 'response_mime_type': 'application/json',  # Force JSON output
             }
             
-            response = self.model.generate_content(
-                prompt,
-                generation_config=generation_config
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=generation_config
             )
             
             # Process response

@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ClipboardList, Trophy, Clock, CheckCircle, AlertCircle, Play } from 'lucide-react';
-import { quizService } from '../../services/student.service';
+import api from '../../services/api';
 
 export function StudentQuizzesPage() {
+    const navigate = useNavigate();
     const [quizzes, setQuizzes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
@@ -28,8 +30,20 @@ export function StudentQuizzesPage() {
             setLoading(true);
             setError(null);
 
-            const response = await quizService.getQuizzes({ published: true });
-            const quizData = response.results || response || [];
+            console.log('[Quizzes] Fetching quizzes...');
+
+            // Use API directly instead of quizService
+            const response = await api.get('/assessments/quizzes/', {
+                params: {
+                    ordering: '-created_at'
+                }
+            });
+
+            console.log('[Quizzes] Response:', response.data);
+
+            const quizData = response.data.results || response.data || [];
+            console.log('[Quizzes] Parsed quizzes:', quizData);
+            console.log('[Quizzes] Number of quizzes:', quizData.length);
 
             setQuizzes(quizData);
 
@@ -46,7 +60,8 @@ export function StudentQuizzesPage() {
                 averageScore: avgScore,
             });
         } catch (err) {
-            console.error('Error fetching quizzes:', err);
+            console.error('[Quizzes] Error fetching quizzes:', err);
+            console.error('[Quizzes] Error response:', err.response?.data);
             setError('Failed to load quizzes. Please try again.');
         } finally {
             setLoading(false);
@@ -258,7 +273,7 @@ export function StudentQuizzesPage() {
                                                 View Results
                                             </Button>
                                         ) : (
-                                            <Button>
+                                            <Button onClick={() => navigate(`/student/quizzes/${quiz.id}/take`)}>
                                                 <Play className="w-4 h-4 mr-2" />
                                                 Start Quiz
                                             </Button>

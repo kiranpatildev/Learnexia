@@ -197,7 +197,7 @@ export function StudentNotesPage() {
                             <Card
                                 key={note.id}
                                 className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-                                onClick={() => navigate(`/student/notes`)}
+                                onClick={() => navigate(`/student/notes/${note.id}`)}
                             >
                                 <CardContent className="p-5">
                                     <div className="flex items-start gap-4">

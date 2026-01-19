@@ -48,8 +48,35 @@ class QuizViewSet(viewsets.ModelViewSet):
         
         return Quiz.objects.none()
     
+    
     def perform_create(self, serializer):
         serializer.save(teacher=self.request.user)
+    
+    def list(self, request, *args, **kwargs):
+        """Override list to add error handling and debugging"""
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"[Quizzes] User: {request.user.email}, Role: {request.user.role}")
+            logger.info(f"[Quizzes] Queryset count: {queryset.count()}")
+            
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            
+            serializer = self.get_serializer(queryset, many=True)
+            logger.info(f"[Quizzes] Returning {len(serializer.data)} quizzes")
+            return Response(serializer.data)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'error': str(e),
+                'detail': 'Failed to load quizzes'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
     def publish(self, request, pk=None):
@@ -86,7 +113,7 @@ class QuizViewSet(viewsets.ModelViewSet):
 class QuestionViewSet(viewsets.ModelViewSet):
     """ViewSet for managing questions"""
     serializer_class = QuestionSerializer
-    permission_classes = [IsAuthenticated, IsTeacher]
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['quiz', 'question_type']
     
@@ -97,6 +124,17 @@ class QuestionViewSet(viewsets.ModelViewSet):
         
         if user.role == 'teacher':
             return Question.objects.filter(quiz__teacher=user, is_deleted=False)
+        elif user.role == 'student':
+            # Students can see questions from published quizzes in enrolled classrooms
+            enrolled_classrooms = ClassroomEnrollment.objects.filter(
+                student=user,
+                is_active=True
+            ).values_list('classroom_id', flat=True)
+            return Question.objects.filter(
+                quiz__classroom_id__in=enrolled_classrooms,
+                quiz__is_published=True,
+                is_deleted=False
+            ).select_related('quiz').prefetch_related('options')
         elif user.role == 'admin':
             return Question.objects.filter(is_deleted=False)
         

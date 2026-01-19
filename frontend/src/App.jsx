@@ -7,9 +7,11 @@ import { ParentLayout } from './layouts/ParentLayout';
 import { StudentDashboard } from './pages/student/StudentDashboard';
 import { StudentLectureDetail } from './pages/student/StudentLectureDetail';
 import { StudentNotesPage } from './pages/student/StudentNotesPage';
+import { NoteViewerPage } from './pages/student/NoteViewerPage';
 import { StudentFlashcardsPage } from './pages/student/StudentFlashcardsPage';
 import { FlashcardStudyPage } from './pages/student/FlashcardStudyPage';
 import { StudentQuizzesPage } from './pages/student/StudentQuizzesPage';
+import { QuizTakePage } from './pages/student/QuizTakePage';
 import { StudentAssignmentsPage } from './pages/student/StudentAssignmentsPage';
 import { StudentAttendancePage } from './pages/student/StudentAttendancePage';
 import { StudentLeaderboardPage } from './pages/student/StudentLeaderboardPage';
@@ -76,9 +78,11 @@ function App() {
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="lectures/:id" element={<StudentLectureDetail />} />
             <Route path="notes" element={<StudentNotesPage />} />
+            <Route path="notes/:noteId" element={<NoteViewerPage />} />
             <Route path="flashcards" element={<StudentFlashcardsPage />} />
             <Route path="flashcards/:setId/study" element={<FlashcardStudyPage />} />
             <Route path="quizzes" element={<StudentQuizzesPage />} />
+            <Route path="quizzes/:quizId/take" element={<QuizTakePage />} />
             <Route path="assignments" element={<StudentAssignmentsPage />} />
             <Route path="attendance" element={<StudentAttendancePage />} />
             <Route path="leaderboard" element={<StudentLeaderboardPage />} />
