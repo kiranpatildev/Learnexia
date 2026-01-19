@@ -153,10 +153,7 @@ class FlashcardGeneratorService:
                 "Please provide more content for flashcard generation."
             )
         
-        if not lecture.transcript_approved_by_teacher:
-            raise ValidationError(
-                "Transcript must be approved by teacher before generating flashcards"
-            )
+        # REMOVED: Transcript approval check - teachers can generate flashcards immediately
     
     def _validate_type(self, card_type: str):
         """Validate card type"""

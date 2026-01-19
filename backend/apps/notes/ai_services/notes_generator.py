@@ -17,7 +17,8 @@ class NotesGeneratorService:
     
     def __init__(self):
         """Initialize the notes generator service"""
-        self.model = GeminiConfig.get_model()
+        self.client = GeminiConfig.get_client()
+        self.model_name = GeminiConfig.MODEL_NAME
     
     def generate_notes(self, lecture, note_format: str = 'comprehensive') -> Dict:
         """
@@ -51,12 +52,25 @@ class NotesGeneratorService:
             # Build prompt
             prompt = self._build_prompt(lecture, note_format, grade, subject)
             
-            # Call Gemini API
+            # Call Gemini API using NEW SDK
             logger.info(f"Generating {note_format} notes for lecture: {lecture.title}")
-            response = self.model.generate_content(prompt)
+            print(f"[DEBUG] Calling Gemini API with model: {self.model_name}")
+            print(f"[DEBUG] Prompt length: {len(prompt)} characters")
+            
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=prompt
+            )
+            
+            print(f"[DEBUG] Response object: {response}")
+            print(f"[DEBUG] Response type: {type(response)}")
+            print(f"[DEBUG] Has text attr: {hasattr(response, 'text')}")
+            if hasattr(response, 'text'):
+                print(f"[DEBUG] Response.text: {response.text[:200] if response.text else 'NONE'}")
             
             # Process response
             if not response or not response.text:
+                print(f"[DEBUG ERROR] Empty response! response={response}, text={getattr(response, 'text', 'NO_ATTR')}")
                 raise ValidationError("Gemini API returned empty response")
             
             notes_content = response.text.strip()
@@ -69,7 +83,7 @@ class NotesGeneratorService:
             summary = self._extract_summary(notes_content)
             word_count = len(notes_content.split())
             
-            logger.info(f"✅ Notes generated successfully: {word_count} words")
+            logger.info(f"[NOTES] Notes generated successfully: {word_count} words")
             
             return {
                 'success': True,
@@ -98,10 +112,7 @@ class NotesGeneratorService:
         if len(lecture.transcript) < 50:
             raise ValidationError("Transcript too short (minimum 50 characters)")
         
-        if not lecture.transcript_approved_by_teacher:
-            raise ValidationError(
-                "Transcript must be approved by teacher before generating notes"
-            )
+        # REMOVED: Transcript approval check - teachers can generate notes immediately
     
     def _validate_format(self, note_format: str):
         """Validate note format is valid"""

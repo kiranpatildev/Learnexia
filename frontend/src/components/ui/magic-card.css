@@ -1,0 +1,109 @@
+:root {
+    --magic-glow-color: 132, 0, 255;
+    /* Default Purple */
+    --magic-bg: #0f172a;
+    /* Slate 900 */
+    --magic-border: rgba(255, 255, 255, 0.1);
+}
+
+.magic-spotlight-container {
+    position: relative;
+    width: 100%;
+    /* Keep layout logic separate (e.g., flex/grid) */
+}
+
+.magic-card {
+    position: relative;
+    background: var(--magic-bg);
+    border: 1px solid var(--magic-border);
+    border-radius: 1rem;
+    /* 16px */
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    /* Variables controlled by JS */
+    --glow-x: 50%;
+    --glow-y: 50%;
+    --glow-intensity: 0;
+    --glow-radius: 300px;
+    --glow-rgb: var(--magic-glow-color);
+}
+
+.magic-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Border Glow Effect */
+.magic-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1.5px;
+    /* Border width */
+    border-radius: inherit;
+    background: radial-gradient(var(--glow-radius) circle at var(--glow-x) var(--glow-y),
+            rgba(var(--glow-rgb), calc(var(--glow-intensity) * 1.0)) 0%,
+            rgba(var(--glow-rgb), calc(var(--glow-intensity) * 0.5)) 40%,
+            transparent 80%);
+    -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    mask:
+        linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.8;
+    z-index: 2;
+    /* Above background, below content */
+}
+
+/* Optional Overlay Glow (Spotlight on surface) */
+.magic-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(var(--glow-radius) circle at var(--glow-x) var(--glow-y),
+            rgba(var(--glow-rgb), calc(var(--glow-intensity) * 0.1)) 0%,
+            transparent 60%);
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.magic-card-content {
+    position: relative;
+    z-index: 10;
+    /* Ensure content is above glow */
+}
+
+/* Global Spotlight Element */
+.magic-global-spotlight {
+    position: fixed;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+            rgba(var(--magic-glow-color), 0.15) 0%,
+            transparent 70%);
+    pointer-events: none;
+    z-index: 50;
+    transform: translate(-50%, -50%);
+    mix-blend-mode: screen;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Particle Styles */
+.magic-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+    pointer-events: none;
+    z-index: 20;
+}

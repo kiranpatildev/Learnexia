@@ -33,7 +33,7 @@ export function TeacherLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
+        <div className="min-h-screen bg-[#F5EDE4] flex">
             <Sidebar
                 items={teacherNavItems}
                 isOpen={sidebarOpen}

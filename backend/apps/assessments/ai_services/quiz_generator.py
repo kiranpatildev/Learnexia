@@ -116,10 +116,7 @@ class QuizGeneratorService:
                 "Please provide more content for quiz generation."
             )
         
-        if not lecture.transcript_approved_by_teacher:
-            raise ValidationError(
-                "Transcript must be approved by teacher before generating quiz"
-            )
+        # REMOVED: Transcript approval check - teachers can generate quiz immediately
     
     def _validate_difficulty(self, difficulty: str):
         """Validate difficulty level"""

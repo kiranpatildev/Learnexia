@@ -37,17 +37,19 @@ export function TeacherLecturesPage() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [lecturesRes, classroomsRes] = await Promise.all([
+            const [lecturesRes, classroomsRes, subjectsRes] = await Promise.all([
                 api.get('/lectures/lectures/', { params: { ordering: '-created_at' } }),
-                api.get('/schools/classrooms/')
+                api.get('/schools/classrooms/'),
+                api.get('/schools/subjects/')
             ]);
 
             const lectureData = lecturesRes.data.results || lecturesRes.data || [];
             setLectures(lectureData);
             setClassrooms(classroomsRes.data.results || classroomsRes.data || []);
 
-            const uniqueSubjects = [...new Set(lectureData.map(l => l.subject).filter(Boolean))];
-            setSubjects(uniqueSubjects.map(s => ({ id: s, name: s })));
+            // Use subjects from the database
+            const subjectsData = subjectsRes.data.results || subjectsRes.data || [];
+            setSubjects(subjectsData);
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -57,7 +59,46 @@ export function TeacherLecturesPage() {
 
     const handleCreateLecture = async (lectureData) => {
         try {
-            await api.post('/lectures/lectures/', lectureData);
+            // Create FormData for file uploads
+            const formData = new FormData();
+
+            // Required fields
+            formData.append('title', lectureData.title);
+            formData.append('classroom', lectureData.classroom);
+            formData.append('chapter', lectureData.chapter || 'General');
+            formData.append('topic', lectureData.topic || lectureData.title);
+            formData.append('duration', lectureData.duration || 0);
+
+            // Optional fields
+            if (lectureData.description) {
+                formData.append('description', lectureData.description);
+            }
+
+            if (lectureData.tags) {
+                formData.append('tags', lectureData.tags);
+            }
+
+            // Content type and files
+            if (lectureData.contentType === 'audio' && lectureData.audioFile) {
+                formData.append('audio_file', lectureData.audioFile);
+                formData.append('recording_type', 'audio');
+            } else if (lectureData.contentType === 'video' && lectureData.videoFile) {
+                formData.append('video_file', lectureData.videoFile);
+                formData.append('recording_type', 'video');
+            } else if (lectureData.contentType === 'text' && lectureData.textContent) {
+                formData.append('transcript', lectureData.textContent);
+            } else if (lectureData.contentType === 'link' && lectureData.linkUrl) {
+                formData.append('description', lectureData.linkUrl);
+            }
+
+            // Status
+            formData.append('status', lectureData.isDraft ? 'draft' : 'completed');
+
+            await api.post('/lectures/lectures/', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
             await fetchData();
             setIsWizardOpen(false);
         } catch (error) {

@@ -12,6 +12,9 @@ from django.utils import timezone
 from django.db.models import Avg, Count, Q, Sum
 from django.db import models
 from django.http import FileResponse
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import Lecture, LectureBookmark, LectureView, LectureResource
 from .serializers import (
@@ -96,8 +99,17 @@ class LectureViewSet(viewsets.ModelViewSet):
         return LectureSerializer
     
     def perform_create(self, serializer):
-        """Auto-set teacher to current user"""
-        serializer.save(teacher=self.request.user)
+        """
+        Auto-set teacher and auto-approve transcript when lecture is created
+        """
+        lecture = serializer.save(teacher=self.request.user)
+        
+        # Auto-approve transcript if it exists (for text-based lectures)
+        if lecture.transcript:
+            lecture.transcript_approved_by_teacher = True
+            lecture.transcript_approved_at = timezone.now()
+            lecture.save(update_fields=['transcript_approved_by_teacher', 'transcript_approved_at'])
+            logger.info(f"[LECTURE] Auto-approved transcript for lecture {lecture.id}")
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsTeacher])
     def share(self, request, pk=None):
@@ -642,11 +654,45 @@ class LectureViewSet(viewsets.ModelViewSet):
             "error_code": "TRANSCRIPT_NOT_APPROVED"
         }
         """
-        from apps.notes.models import LectureNote
-        from apps.notes.ai_services.notes_generator import NotesGeneratorService
-        from apps.notes.serializers import NotesGenerationRequestSerializer
+        print("\n" + "="*80)
+        print(f"[ENTRY] generate_notes FUNCTION CALLED! pk={pk}, user={request.user}")
+        print("="*80 + "\n")
         
-        lecture = self.get_object()
+        try:
+            print("[IMPORT] Importing LectureNote...")
+            from apps.notes.models import LectureNote
+            print("[IMPORT] Importing NotesGeneratorService...")
+            from apps.notes.ai_services.notes_generator import NotesGeneratorService
+            print("[IMPORT] Importing NotesGenerationRequestSerializer...")
+            from apps.notes.serializers import NotesGenerationRequestSerializer
+            print("[IMPORT] All imports successful!")
+        except Exception as e:
+            print(f"[IMPORT ERROR] Failed to import: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'success': False,
+                'message': f'Import error: {str(e)}',
+                'error_code': 'IMPORT_ERROR'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        try:
+            print(f"\n{'='*80}")
+            print(f"[DEBUG] generate_notes called for lecture ID: {pk}, user: {request.user}")
+            lecture = self.get_object()
+            print(f"[DEBUG] Lecture found: {lecture.id} - {lecture.title}")
+            print(f"[DEBUG] Has transcript: {bool(lecture.transcript)}")
+            print(f"[DEBUG] Transcript length: {len(lecture.transcript) if lecture.transcript else 0}")
+            print(f"{'='*80}\n")
+        except Exception as e:
+            print(f"[DEBUG ERROR] Failed at initial stage: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'success': False,
+                'message': f'Error at initial stage: {str(e)}',
+                'error_code': 'INIT_ERROR'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         # Validate permissions (only teacher who owns lecture)
         if lecture.teacher != request.user:
@@ -688,16 +734,9 @@ class LectureViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if not lecture.transcript_approved_by_teacher:
-            return Response(
-                {
-                    'success': False,
-                    'message': 'Transcript must be approved before generating notes. Use the approve_transcript endpoint first.',
-                    'error_code': 'TRANSCRIPT_NOT_APPROVED'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # REMOVED: Transcript approval check - teachers can generate notes immediately
         
+
         # Check if notes already exist
         try:
             existing_note = LectureNote.objects.get(lecture=lecture)
@@ -739,7 +778,6 @@ class LectureViewSet(viewsets.ModelViewSet):
                 note.content = result['notes_content']
                 note.title = result['title']
                 note.summary = result['summary']
-                note.note_format = note_format
                 note.is_auto_generated = True
                 note.auto_generated_at = timezone.now()
             else:
@@ -751,7 +789,6 @@ class LectureViewSet(viewsets.ModelViewSet):
                     title=result['title'],
                     content=result['notes_content'],
                     summary=result['summary'],
-                    note_format=note_format,
                     is_auto_generated=True,
                     auto_generated_at=timezone.now(),
                     is_published=auto_publish
@@ -764,7 +801,7 @@ class LectureViewSet(viewsets.ModelViewSet):
             
             note.save()
             
-            logger.info(f"✅ Notes generated for lecture {lecture.id}: {result['word_count']} words")
+            logger.info(f"[NOTES] Notes generated for lecture {lecture.id}: {result['word_count']} words")
             
             # Return success response
             return Response({
@@ -772,18 +809,21 @@ class LectureViewSet(viewsets.ModelViewSet):
                 'message': 'Notes generated successfully! Review and publish when ready.',
                 'note_id': str(note.id),
                 'title': note.title,
-                'format': note.note_format,
                 'word_count': result['word_count'],
                 'preview': note.summary or note.content[:500]
             }, status=status.HTTP_201_CREATED)
         
         except Exception as e:
-            logger.error(f"Notes generation error: {str(e)}", exc_info=True)
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"[NOTES] Notes generation error: {str(e)}")
+            logger.error(f"[NOTES] Full traceback: {error_details}")
             return Response(
                 {
                     'success': False,
                     'message': f'An error occurred while generating notes: {str(e)}',
-                    'error_code': 'GENERATION_ERROR'
+                    'error_code': 'GENERATION_ERROR',
+                    'details': str(e) if settings.DEBUG else None
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
@@ -873,16 +913,9 @@ class LectureViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if not lecture.transcript_approved_by_teacher:
-            return Response(
-                {
-                    'success': False,
-                    'message': 'Transcript must be approved before generating quiz. Use the approve_transcript endpoint first.',
-                    'error_code': 'TRANSCRIPT_NOT_APPROVED'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # REMOVED: Transcript approval check - teachers can generate quiz immediately
         
+
         # Check if quiz already exists for this lecture
         try:
             existing_quiz = Quiz.objects.get(lecture=lecture)
@@ -1070,16 +1103,9 @@ class LectureViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if not lecture.transcript_approved_by_teacher:
-            return Response(
-                {
-                    'success': False,
-                    'message': 'Transcript must be approved before generating flashcards. Use the approve_transcript endpoint first.',
-                    'error_code': 'TRANSCRIPT_NOT_APPROVED'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # REMOVED: Transcript approval check - teachers can generate flashcards immediately
         
+
         # Generate flashcards using AI service
         try:
             service = FlashcardGeneratorService()

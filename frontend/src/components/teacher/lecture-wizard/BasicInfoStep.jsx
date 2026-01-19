@@ -59,15 +59,41 @@ export default function BasicInfoStep({ formData, updateFormData, errors, classr
                             }`}
                     >
                         <option value="">Select a subject</option>
-                        {subjects.map((subject) => (
-                            <option key={subject} value={subject}>
-                                {subject}
-                            </option>
-                        ))}
+                        {subjects && subjects.length > 0 ? (
+                            subjects.map((subject) => (
+                                <option key={subject.id} value={subject.id}>
+                                    {subject.name} - Grade {subject.grade}
+                                </option>
+                            ))
+                        ) : (
+                            <option disabled>No subjects available</option>
+                        )}
                     </select>
                     {errors.subject && (
                         <p className="text-sm text-red-600 mt-1">{errors.subject}</p>
                     )}
+                </div>
+
+                {/* Chapter */}
+                <div>
+                    <Label htmlFor="chapter">Chapter</Label>
+                    <Input
+                        id="chapter"
+                        value={formData.chapter || ''}
+                        onChange={(e) => updateFormData({ chapter: e.target.value })}
+                        placeholder="e.g., Chapter 5"
+                    />
+                </div>
+
+                {/* Topic */}
+                <div>
+                    <Label htmlFor="topic">Topic</Label>
+                    <Input
+                        id="topic"
+                        value={formData.topic || ''}
+                        onChange={(e) => updateFormData({ topic: e.target.value })}
+                        placeholder="e.g., Photosynthesis Process"
+                    />
                 </div>
 
                 {/* Duration */}

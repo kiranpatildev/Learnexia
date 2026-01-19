@@ -3,7 +3,7 @@ Google Gemini API configuration and initialization
 """
 
 from django.conf import settings
-import google.generativeai as genai
+from google import genai
 import logging
 
 logger = logging.getLogger(__name__)
@@ -59,24 +59,19 @@ class GeminiConfig:
                 "Get your API key from: https://makersuite.google.com/app/apikey"
             )
         
-        # Configure Gemini API
-        genai.configure(api_key=cls.API_KEY)
-        logger.info(f"✅ Gemini API initialized with model: {cls.MODEL_NAME}")
+        logger.info(f"[GEMINI] API initialized with model: {cls.MODEL_NAME}")
     
     @classmethod
-    def get_model(cls):
+    def get_client(cls):
         """
-        Get configured Gemini model instance
+        Get configured Gemini client instance (NEW SDK)
         
         Returns:
-            GenerativeModel: Configured Gemini model
+            genai.Client: Configured Gemini client
         """
         cls.initialize()
-        return genai.GenerativeModel(
-            model_name=cls.MODEL_NAME,
-            generation_config=cls.GENERATION_CONFIG,
-            safety_settings=cls.SAFETY_SETTINGS
-        )
+        # The client automatically picks up GEMINI_API_KEY from environment
+        return genai.Client(api_key=cls.API_KEY)
     
     @classmethod
     def validate_model_name(cls, model_name: str) -> bool:
@@ -92,6 +87,7 @@ class GeminiConfig:
         valid_models = [
             'gemini-1.5-flash',
             'gemini-1.5-pro',
+            'gemini-2.0-flash-exp',
             'gemini-pro',
         ]
         return model_name in valid_models

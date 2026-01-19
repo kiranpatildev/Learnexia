@@ -68,7 +68,8 @@ export function AIFeaturesPage() {
 
         setLoading({ ...loading, notes: true });
         try {
-            const format = selectedNoteType === 'detailed' ? 'DETAILED' : 'CONCISE';
+            // Map frontend values to backend format
+            const format = selectedNoteType === 'detailed' ? 'comprehensive' : 'bullet_point';
             const result = await lectureService.generateNotes(selectedLecture.id, {
                 note_format: format,
                 force_regenerate: false,
@@ -117,10 +118,11 @@ export function AIFeaturesPage() {
 
         setLoading({ ...loading, quiz: true });
         try {
-            const questionCount = selectedQuizDifficulty === 'easy' ? 10 : selectedQuizDifficulty === 'medium' ? 15 : 20;
+            const questionCount = selectedQuizDifficulty === 'easy' ? 5 : selectedQuizDifficulty === 'medium' ? 10 : 15;
             const result = await lectureService.generateQuiz(selectedLecture.id, {
-                difficulty_level: selectedQuizDifficulty,
-                question_count: questionCount,
+                difficulty: selectedQuizDifficulty.toUpperCase(), // EASY, MEDIUM, HARD
+                length: questionCount,
+                force_regenerate: false,
                 auto_publish: true,
             });
             setResults({ ...results, quiz: result });
@@ -212,8 +214,8 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedNoteType('detailed')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedNoteType === 'detailed'
-                                        ? 'bg-slate-900 text-white'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    ? 'bg-slate-900 text-white'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
                                 Detailed
@@ -221,8 +223,8 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedNoteType('concise')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedNoteType === 'concise'
-                                        ? 'bg-amber-400 text-slate-900'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    ? 'bg-amber-400 text-slate-900'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
                                 Concise
@@ -273,8 +275,8 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedFlashcardType('mixed')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedFlashcardType === 'mixed'
-                                        ? 'bg-slate-900 text-white'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    ? 'bg-slate-900 text-white'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
                                 Mixed
@@ -282,8 +284,8 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedFlashcardType('definitions')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedFlashcardType === 'definitions'
-                                        ? 'bg-slate-100 text-slate-700'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    ? 'bg-slate-100 text-slate-700'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
                                 Definitions
@@ -334,8 +336,8 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedQuizDifficulty('easy')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedQuizDifficulty === 'easy'
-                                        ? 'bg-slate-100 text-slate-700'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    ? 'bg-slate-100 text-slate-700'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
                                 Easy
@@ -343,8 +345,8 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedQuizDifficulty('medium')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedQuizDifficulty === 'medium'
-                                        ? 'bg-slate-900 text-white'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    ? 'bg-slate-900 text-white'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
                                 Medium
@@ -352,8 +354,8 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedQuizDifficulty('hard')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedQuizDifficulty === 'hard'
-                                        ? 'bg-slate-100 text-slate-700'
-                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    ? 'bg-slate-100 text-slate-700'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
                                 Hard
