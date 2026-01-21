@@ -284,7 +284,7 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedFlashcardType('definitions')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedFlashcardType === 'definitions'
-                                    ? 'bg-slate-100 text-slate-700'
+                                    ? 'bg-purple-500 text-white'
                                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
@@ -336,7 +336,7 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedQuizDifficulty('easy')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedQuizDifficulty === 'easy'
-                                    ? 'bg-slate-100 text-slate-700'
+                                    ? 'bg-emerald-500 text-white'
                                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >
@@ -354,7 +354,7 @@ export function AIFeaturesPage() {
                             <button
                                 onClick={() => setSelectedQuizDifficulty('hard')}
                                 className={`flex-1 px-4 py-2 rounded-lg font-medium text-sm transition-all ${selectedQuizDifficulty === 'hard'
-                                    ? 'bg-slate-100 text-slate-700'
+                                    ? 'bg-red-500 text-white'
                                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                     }`}
                             >

@@ -145,21 +145,34 @@ class BehaviorReviewRequestSerializer(serializers.Serializer):
         help_text='Action to take (APPROVE: accept as-is, REJECT: discard, MODIFY: edit before accepting)'
     )
     
+    student_id = serializers.UUIDField(
+        required=False,
+        allow_null=True,
+        help_text='UUID of the student to associate with this detection (optional - will use name matching if not provided)'
+    )
+    
     teacher_notes = serializers.CharField(
         required=False,
         allow_blank=True,
+        allow_null=True,
         help_text='Optional teacher comments'
     )
     
     # Modification fields (only for MODIFY action)
-    modified_description = serializers.CharField(required=False, allow_blank=True)
+    modified_description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        allow_null=True
+    )
     modified_severity = serializers.ChoiceField(
         choices=['minor', 'moderate', 'serious', 'critical'],
-        required=False
+        required=False,
+        allow_null=True
     )
     modified_behavior_type = serializers.ChoiceField(
         choices=['disruption', 'disrespect', 'tardiness', 'incomplete_work', 'cheating', 'bullying', 'other'],
-        required=False
+        required=False,
+        allow_null=True
     )
     
     # Notification options

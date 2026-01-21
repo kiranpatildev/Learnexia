@@ -369,12 +369,20 @@ class PendingBehaviorDetectionViewSet(viewsets.ReadOnlyModelViewSet):
         from .models import PendingBehaviorDetection
         from .serializers import BehaviorReviewRequestSerializer
         from apps.schools.models import ClassroomEnrollment
+        import logging
+        
+        logger = logging.getLogger(__name__)
         
         pending = self.get_object()
+        
+        logger.info(f"[REVIEW API] Detection ID: {pending.id}")
+        logger.info(f"[REVIEW API] Request data: {request.data}")
         
         # Validate request
         serializer = BehaviorReviewRequestSerializer(data=request.data)
         if not serializer.is_valid():
+            logger.error(f"[REVIEW API] Validation failed!")
+            logger.error(f"[REVIEW API] Errors: {serializer.errors}")
             return Response(
                 {
                     'success': False,
@@ -407,23 +415,55 @@ class PendingBehaviorDetectionViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Handle APPROVE or MODIFY
         try:
-            # Find student by name (simplified - in production, use better matching)
+            # Find student by ID or name
             from apps.accounts.models import User
             
-            # Try to find student in the lecture's classroom
             classroom = pending.lecture.classroom
-            enrolled_students = ClassroomEnrollment.objects.filter(
-                classroom=classroom,
-                is_active=True
-            ).select_related('student')
-            
-            # Simple name matching (case-insensitive)
             student = None
-            for enrollment in enrolled_students:
-                full_name = enrollment.student.get_full_name()
-                if pending.student_name.lower() in full_name.lower() or full_name.lower() in pending.student_name.lower():
-                    student = enrollment.student
-                    break
+            student_id = validated_data.get('student_id')
+            
+            # If student_id provided, use it directly
+            if student_id:
+                try:
+                    student = User.objects.get(id=student_id, role='student')
+                    # Verify student is enrolled in classroom
+                    enrollment = ClassroomEnrollment.objects.filter(
+                        classroom=classroom,
+                        student=student,
+                        is_active=True
+                    ).first()
+                    
+                    if not enrollment:
+                        return Response(
+                            {
+                                'success': False,
+                                'message': f'Student is not enrolled in this classroom.',
+                                'error_code': 'STUDENT_NOT_ENROLLED'
+                            },
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                except User.DoesNotExist:
+                    return Response(
+                        {
+                            'success': False,
+                            'message': f'Student not found.',
+                            'error_code': 'STUDENT_NOT_FOUND'
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            else:
+                # Fallback to name matching
+                enrolled_students = ClassroomEnrollment.objects.filter(
+                    classroom=classroom,
+                    is_active=True
+                ).select_related('student')
+                
+                # Simple name matching (case-insensitive)
+                for enrollment in enrolled_students:
+                    full_name = enrollment.student.get_full_name()
+                    if pending.student_name.lower() in full_name.lower() or full_name.lower() in pending.student_name.lower():
+                        student = enrollment.student
+                        break
             
             if not student:
                 return Response(
@@ -526,6 +566,83 @@ class PendingBehaviorDetectionViewSet(viewsets.ReadOnlyModelViewSet):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+    
+    
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated, IsTeacher])
+    def match_students(self, request, pk=None):
+        """
+        Get possible student matches for a pending detection
+        
+        Returns all possible student matches with similarity scores
+        to help teacher select the correct student when there are duplicates
+        
+        Response:
+        {
+            "detection_id": 1,
+            "detected_name": "Kiran",
+            "possible_students": [
+                {
+                    "student_id": "uuid",
+                    "student_name": "Kiran Patil",
+                    "similarity": 0.95,
+                    "match_type": "first_name",
+                    "confidence": "HIGH"
+                },
+                {
+                    "student_id": "uuid2",
+                    "student_name": "Kiran Kumar",
+                    "similarity": 0.93,
+                    "match_type": "first_name",
+                    "confidence": "HIGH"
+                }
+            ],
+            "is_ambiguous": true,
+            "needs_review": true
+        }
+        """
+        from .models import PendingBehaviorDetection
+        from .utils.student_matcher import StudentMatcher
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        pending = self.get_object()
+        classroom = pending.lecture.classroom
+        
+        logger.info(f"[MATCH STUDENTS API] Detection ID: {pending.id}")
+        logger.info(f"[MATCH STUDENTS API] Student name: '{pending.student_name}'")
+        logger.info(f"[MATCH STUDENTS API] Classroom: {str(classroom)}")
+        logger.info(f"[MATCH STUDENTS API] Classroom ID: {classroom.id}")
+        
+        # Use StudentMatcher to find possible matches
+        result = StudentMatcher.match_students(classroom, [pending.student_name])
+        
+        logger.info(f"[MATCH STUDENTS API] Matcher result: {result}")
+        
+        if not result['matches'] or len(result['matches']) == 0:
+            logger.error(f"[MATCH STUDENTS API] No matches returned from StudentMatcher")
+            return Response({
+                'detection_id': pending.id,
+                'detected_name': pending.student_name,
+                'possible_students': [],
+                'is_ambiguous': False,
+                'needs_review': True,
+                'message': 'No matching students found in classroom'
+            })
+        
+        match_info = result['matches'][0]  # Get first (and only) match
+        
+        logger.info(f"[MATCH STUDENTS API] Match info: {match_info}")
+        logger.info(f"[MATCH STUDENTS API] Possible students: {len(match_info.get('possible_students', []))}")
+        
+        return Response({
+            'detection_id': pending.id,
+            'detected_name': pending.student_name,
+            'possible_students': match_info['possible_students'],
+            'is_ambiguous': match_info['is_ambiguous'],
+            'needs_review': match_info['needs_review'],
+            'best_match': match_info.get('best_match')
+        })
     
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated, IsTeacher])
     def pending_count(self, request):

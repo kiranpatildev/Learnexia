@@ -310,14 +310,15 @@ class PendingBehaviorDetection(TimeStampedModel):
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
     teacher_notes = models.TextField(
+        null=True,
         blank=True,
         help_text='Teacher comments or modifications'
     )
     
     # Modified values (if teacher modifies before approving)
-    modified_description = models.TextField(blank=True)
-    modified_severity = models.CharField(max_length=20, blank=True)
-    modified_behavior_type = models.CharField(max_length=20, blank=True)
+    modified_description = models.TextField(null=True, blank=True)
+    modified_severity = models.CharField(max_length=20, null=True, blank=True)
+    modified_behavior_type = models.CharField(max_length=20, null=True, blank=True)
     
     # Notification tracking
     student_notified = models.BooleanField(default=False)

@@ -1364,7 +1364,6 @@ class LectureViewSet(viewsets.ModelViewSet):
         Note: All detected behaviors require teacher review before any action is taken.
         """
         from apps.behavior.models import PendingBehaviorDetection
-        from apps.behavior.ai_services.behavior_detector import BehaviorDetectionService
         from apps.behavior.serializers import (
             BehaviorDetectionRequestSerializer,
             PendingBehaviorDetectionSerializer
@@ -1410,23 +1409,20 @@ class LectureViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        if not lecture.transcript_approved_by_teacher:
-            return Response(
-                {
-                    'success': False,
-                    'message': 'Transcript must be approved before behavior detection. Use the approve_transcript endpoint first.',
-                    'error_code': 'TRANSCRIPT_NOT_APPROVED'
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
         # Detect behaviors using AI service
         try:
-            service = BehaviorDetectionService()
-            result = service.detect_behaviors(
-                lecture=lecture,
-                sensitivity=sensitivity
-            )
+            from apps.behavior.ai_services.behavior_analyzer import BehaviorAnalyzerService
+            
+            # Debug logging
+            logger.info(f"[BEHAVIOR] Detecting behaviors for lecture {lecture.id}")
+            logger.info(f"[BEHAVIOR] Transcript length: {len(lecture.transcript) if lecture.transcript else 0} characters")
+            logger.info(f"[BEHAVIOR] Transcript preview: {lecture.transcript[:200] if lecture.transcript else 'EMPTY'}")
+            
+            service = BehaviorAnalyzerService()
+            result = service.analyze_lecture_behavior(lecture)
+            
+            logger.info(f"[BEHAVIOR] AI Result: success={result.get('success')}, count={result.get('count')}")
+            logger.info(f"[BEHAVIOR] Detections: {result.get('detections')}")
             
             if not result['success']:
                 return Response(
@@ -1438,9 +1434,10 @@ class LectureViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
             
+            
             # Create PendingBehaviorDetection records
             pending_behaviors = []
-            for behavior in result['behaviors']:
+            for behavior in result['detections']:
                 pending = PendingBehaviorDetection.objects.create(
                     lecture=lecture,
                     student_name=behavior['student_name'],
@@ -1450,7 +1447,7 @@ class LectureViewSet(viewsets.ModelViewSet):
                     original_statement=behavior['original_statement'],
                     is_positive=behavior['is_positive'],
                     ai_confidence=behavior['confidence'],
-                    ai_confidence_score=behavior['ai_confidence_score'],
+                    ai_confidence_score=behavior['confidence_score'],
                     detection_sensitivity=sensitivity,
                     status='pending'
                 )

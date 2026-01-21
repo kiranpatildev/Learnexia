@@ -1,233 +1,330 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
+    Brain,
     Plus,
-    CheckCircle,
-    Edit3,
-    XCircle,
-    AlertCircle,
     Clock,
-    BookOpen
+    CheckCircle,
+    AlertCircle,
+    TrendingUp,
+    Users,
+    Sparkles
 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
 import api from '../../services/api';
+import { BehaviorReviewModal } from '../../components/behavior/BehaviorReviewModal';
 
 export function BehaviorManagementPage() {
-    const [activeTab, setActiveTab] = useState('pending');
-    const [incidents, setIncidents] = useState([]);
+    const navigate = useNavigate();
+    const [activeTab, setActiveTab] = useState('ai-pending'); // ai-pending | manual-pending | approved
+    const [aiDetections, setAiDetections] = useState([]);
+    const [manualIncidents, setManualIncidents] = useState([]);
+    const [selectedDetection, setSelectedDetection] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [showReportModal, setShowReportModal] = useState(false);
+    const [stats, setStats] = useState({
+        aiPending: 0,
+        manualPending: 0,
+        approved: 0,
+        total: 0
+    });
 
     useEffect(() => {
-        fetchIncidents();
+        fetchData();
     }, [activeTab]);
 
-    const fetchIncidents = async () => {
+    const fetchData = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/behavior/incidents/', {
-                params: { status: activeTab === 'pending' ? 'pending' : 'approved' }
+
+            // Fetch AI pending detections
+            const aiResponse = await api.get('/behavior/pending-detections/', {
+                params: { status: 'pending' }
             });
-            setIncidents(response.data.results || response.data || []);
+            const aiData = aiResponse.data.results || aiResponse.data || [];
+            setAiDetections(aiData);
+
+            // Fetch manual incidents
+            const manualResponse = await api.get('/behavior/incidents/');
+            const manualData = manualResponse.data.results || manualResponse.data || [];
+            setManualIncidents(manualData);
+
+            // Calculate stats
+            setStats({
+                aiPending: aiData.length,
+                manualPending: manualData.filter(i => i.status === 'pending').length,
+                approved: manualData.filter(i => i.status === 'approved').length,
+                total: manualData.length
+            });
+
         } catch (error) {
-            console.error('Error fetching incidents:', error);
-            setIncidents([]);
+            console.error('[Behavior] Error fetching data:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleAction = async (incidentId, action) => {
-        try {
-            await api.patch(`/behavior/incidents/${incidentId}/`, { status: action });
-            fetchIncidents();
-        } catch (error) {
-            console.error('Error updating incident:', error);
-        }
-    };
-
-    const getSeverityColor = (severity) => {
-        switch (severity?.toLowerCase()) {
-            case 'high':
-                return 'bg-red-100 text-red-700 border-red-200';
-            case 'medium':
-                return 'bg-orange-100 text-orange-700 border-orange-200';
-            case 'low':
-                return 'bg-blue-100 text-blue-700 border-blue-200';
-            default:
-                return 'bg-gray-100 text-gray-700 border-gray-200';
-        }
-    };
-
-    const formatDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    };
-
-    const pendingCount = incidents.filter(i => i.status === 'pending').length;
-
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            {/* Header */}
-            <div className="flex items-start justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Behavior Management</h1>
-                    <p className="text-gray-600">Review and manage student behavior incidents</p>
-                </div>
-                <Button
-                    onClick={() => setShowReportModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2"
-                >
-                    <Plus className="w-5 h-5" />
-                    Report Incident
-                </Button>
-            </div>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+            <div className="max-w-7xl mx-auto space-y-6">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Behavior Management</h1>
+                        <p className="text-gray-600 mt-1">AI-powered behavior tracking and reporting</p>
+                    </div>
 
-            {/* Tabs */}
-            <div className="flex gap-2 mb-6 border-b border-gray-200">
-                <button
-                    onClick={() => setActiveTab('pending')}
-                    className={`px-6 py-3 font-medium transition-all relative ${activeTab === 'pending'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                >
-                    Pending Review
-                    {pendingCount > 0 && (
-                        <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full text-xs font-semibold">
-                            {pendingCount}
-                        </span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setActiveTab('approved')}
-                    className={`px-6 py-3 font-medium transition-all relative ${activeTab === 'approved'
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                >
-                    Approved
-                </button>
-            </div>
-
-            {/* Incidents List */}
-            {loading ? (
-                <div className="text-center py-12">
-                    <p className="text-gray-500">Loading incidents...</p>
-                </div>
-            ) : incidents.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                    <AlertCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-600 text-lg mb-2">No incidents found</p>
-                    <p className="text-gray-400 text-sm">
-                        {activeTab === 'pending'
-                            ? 'All incidents have been reviewed'
-                            : 'No approved incidents yet'
-                        }
-                    </p>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {incidents.map((incident) => (
-                        <div
-                            key={incident.id}
-                            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => navigate('/teacher/behavior/generate')}
+                            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
                         >
-                            <div className="flex items-start justify-between">
-                                {/* Left Side - Incident Info */}
-                                <div className="flex-1">
-                                    {/* Student Name and Severity */}
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-lg font-bold text-gray-900">
-                                            {incident.student_name || 'Unknown Student'}
-                                        </h3>
-                                        <Badge
-                                            className={`${getSeverityColor(incident.severity)} border px-3 py-1 text-xs font-semibold`}
-                                        >
-                                            {incident.severity || 'medium'}
-                                        </Badge>
-                                    </div>
+                            <Brain className="w-5 h-5" />
+                            AI Behavior Report
+                        </button>
 
-                                    {/* Incident Type */}
-                                    <p className="text-gray-700 font-medium mb-1">
-                                        {incident.incident_type || 'Behavior Incident'}
-                                    </p>
-
-                                    {/* Course and Date */}
-                                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-2">
-                                        <div className="flex items-center gap-1">
-                                            <BookOpen className="w-4 h-4" />
-                                            <span>{incident.course || 'General'}</span>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <Clock className="w-4 h-4" />
-                                            <span>{formatDate(incident.created_at)}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* AI Confidence */}
-                                    {incident.ai_confidence && (
-                                        <p className="text-sm text-gray-600">
-                                            AI Confidence: <span className="font-semibold">{incident.ai_confidence}%</span>
-                                        </p>
-                                    )}
-
-                                    {/* Description */}
-                                    {incident.description && (
-                                        <p className="text-sm text-gray-600 mt-2">
-                                            {incident.description}
-                                        </p>
-                                    )}
-                                </div>
-
-                                {/* Right Side - Action Buttons */}
-                                {activeTab === 'pending' && (
-                                    <div className="flex items-center gap-2 ml-6">
-                                        <Button
-                                            onClick={() => handleAction(incident.id, 'approved')}
-                                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
-                                        >
-                                            <CheckCircle className="w-4 h-4" />
-                                            Approve
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleAction(incident.id, 'modified')}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
-                                        >
-                                            <Edit3 className="w-4 h-4" />
-                                            Modify
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleAction(incident.id, 'rejected')}
-                                            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
-                                        >
-                                            <XCircle className="w-4 h-4" />
-                                            Reject
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Report Incident Modal - Placeholder */}
-            {showReportModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-8 max-w-md w-full">
-                        <h2 className="text-2xl font-bold mb-4">Report Incident</h2>
-                        <p className="text-gray-600 mb-6">Report incident form will be implemented here</p>
-                        <Button
-                            onClick={() => setShowReportModal(false)}
-                            className="w-full bg-gray-600 hover:bg-gray-700 text-white"
+                        <button
+                            onClick={() => {/* TODO: Open manual report modal */ }}
+                            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
                         >
-                            Close
-                        </Button>
+                            <Plus className="w-5 h-5" />
+                            Report Incident
+                        </button>
                     </div>
                 </div>
+
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600 font-medium">AI Pending Review</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.aiPending}</p>
+                            </div>
+                            <div className="w-14 h-14 bg-purple-100 rounded-xl flex items-center justify-center">
+                                <Brain className="w-7 h-7 text-purple-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-amber-500">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600 font-medium">Manual Pending</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.manualPending}</p>
+                            </div>
+                            <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center">
+                                <Clock className="w-7 h-7 text-amber-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-emerald-500">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600 font-medium">Approved</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.approved}</p>
+                            </div>
+                            <div className="w-14 h-14 bg-emerald-100 rounded-xl flex items-center justify-center">
+                                <CheckCircle className="w-7 h-7 text-emerald-600" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-600 font-medium">Total Incidents</p>
+                                <p className="text-3xl font-bold text-gray-900 mt-2">{stats.total}</p>
+                            </div>
+                            <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <TrendingUp className="w-7 h-7 text-blue-600" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="bg-white rounded-xl shadow-lg p-1 flex gap-2">
+                    <button
+                        onClick={() => setActiveTab('ai-pending')}
+                        className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${activeTab === 'ai-pending'
+                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md'
+                            : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        <div className="flex items-center justify-center gap-2">
+                            <Sparkles className="w-4 h-4" />
+                            AI Pending ({stats.aiPending})
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('manual-pending')}
+                        className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${activeTab === 'manual-pending'
+                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md'
+                            : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        <div className="flex items-center justify-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            Manual Pending ({stats.manualPending})
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => setActiveTab('approved')}
+                        className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${activeTab === 'approved'
+                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md'
+                            : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        <div className="flex items-center justify-center gap-2">
+                            <CheckCircle className="w-4 h-4" />
+                            Approved ({stats.approved})
+                        </div>
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="space-y-4">
+                    {loading ? (
+                        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-gray-600">Loading...</p>
+                        </div>
+                    ) : activeTab === 'ai-pending' ? (
+                        aiDetections.length === 0 ? (
+                            <EmptyState
+                                icon={<Sparkles className="w-16 h-16 text-gray-300" />}
+                                title="No AI Detections"
+                                description="Generate an AI behavior report from a lecture to see detections here"
+                                actionLabel="Generate AI Report"
+                                onAction={() => navigate('/teacher/behavior/generate')}
+                            />
+                        ) : (
+                            aiDetections.map(detection => (
+                                <AIDetectionCard
+                                    key={detection.id}
+                                    detection={detection}
+                                    onReview={() => setSelectedDetection(detection)}
+                                />
+                            ))
+                        )
+                    ) : activeTab === 'manual-pending' ? (
+                        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                            <p className="text-gray-600">Manual incidents coming soon</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+                            <CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                            <p className="text-gray-600">Approved incidents coming soon</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Review Modal */}
+            {selectedDetection && (
+                <BehaviorReviewModal
+                    detection={selectedDetection}
+                    onClose={() => setSelectedDetection(null)}
+                    onSuccess={fetchData}
+                />
             )}
+        </div>
+    );
+}
+
+// Empty State Component
+function EmptyState({ icon, title, description, actionLabel, onAction }) {
+    return (
+        <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+            <div className="mb-4">{icon}</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>
+            <p className="text-gray-600 mb-6">{description}</p>
+            {actionLabel && (
+                <button
+                    onClick={onAction}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-blue-700 transition-all inline-flex items-center gap-2"
+                >
+                    <Brain className="w-4 h-4" />
+                    {actionLabel}
+                </button>
+            )}
+        </div>
+    );
+}
+
+// AI Detection Card Component
+function AIDetectionCard({ detection, onReview }) {
+    const getSeverityColor = (severity) => {
+        const colors = {
+            minor: 'bg-blue-100 text-blue-800 border-blue-300',
+            moderate: 'bg-amber-100 text-amber-800 border-amber-300',
+            serious: 'bg-orange-100 text-orange-800 border-orange-300',
+            critical: 'bg-red-100 text-red-800 border-red-300'
+        };
+        return colors[severity] || colors.minor;
+    };
+
+    const getConfidenceColor = (confidence) => {
+        const colors = {
+            HIGH: 'bg-emerald-100 text-emerald-800',
+            MEDIUM: 'bg-amber-100 text-amber-800',
+            LOW: 'bg-gray-100 text-gray-800'
+        };
+        return colors[confidence] || colors.MEDIUM;
+    };
+
+    return (
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl shadow-lg border-2 border-purple-200 p-6 hover:shadow-xl transition-all">
+            <div className="flex items-start justify-between">
+                <div className="flex-1">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <Brain className="w-5 h-5 text-purple-600" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-900">{detection.student_name}</h3>
+                            <p className="text-sm text-gray-600">{detection.behavior_type?.replace('_', ' ')}</p>
+                        </div>
+                    </div>
+
+                    {/* Description */}
+                    <p className="text-gray-700 mb-3">{detection.description}</p>
+
+                    {/* Original Quote */}
+                    <div className="bg-white/70 border-l-4 border-purple-400 p-3 mb-3 rounded">
+                        <p className="text-sm text-gray-700 italic">"{detection.original_statement}"</p>
+                    </div>
+
+                    {/* Badges */}
+                    <div className="flex flex-wrap gap-2">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getSeverityColor(detection.severity)}`}>
+                            {detection.severity}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getConfidenceColor(detection.ai_confidence)}`}>
+                            {detection.ai_confidence} Confidence
+                        </span>
+                        {detection.is_positive && (
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                                Positive Behavior
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Action Button */}
+                <div className="ml-6">
+                    <button
+                        onClick={onReview}
+                        className="px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-all shadow-md hover:shadow-lg"
+                    >
+                        Review & Approve
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
