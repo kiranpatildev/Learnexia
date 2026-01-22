@@ -10,8 +10,10 @@ import {
     Calendar,
     Trophy,
     AlertCircle,
-    User
+    User,
+    Gamepad2
 } from 'lucide-react';
+
 
 const studentNavItems = [
     { label: 'Dashboard', path: '/student/dashboard', icon: LayoutDashboard },
@@ -21,6 +23,7 @@ const studentNavItems = [
     { label: 'Assignments', path: '/student/assignments', icon: FileText },
     { label: 'Attendance', path: '/student/attendance', icon: Calendar },
     { label: 'Leaderboard', path: '/student/leaderboard', icon: Trophy },
+    { label: 'Games', path: '/student/games', icon: Gamepad2 },
     { label: 'Behavior', path: '/student/behavior', icon: AlertCircle },
     { label: 'Profile', path: '/student/profile', icon: User },
 ];

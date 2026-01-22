@@ -30,7 +30,13 @@ import { AIBehaviorReportPage } from './pages/teacher/AIBehaviorReportPage';
 import { AttendancePage } from './pages/teacher/AttendancePage';
 import { MessagesPage } from './pages/teacher/MessagesPage';
 import { TeacherProfilePage } from './pages/teacher/TeacherProfilePage';
+import { StudentGamesPage } from './pages/student/StudentGamesPage';
+import { TeacherGamesPage } from './pages/teacher/TeacherGamesPage';
+import { TeacherGameGeneratorPage } from './pages/teacher/TeacherGameGeneratorPage';
+import FallDropGame from './components/games/FallDropGame/FallDropGame';
+import { GamePlayerPage } from './pages/student/GamePlayerPage';
 import { ParentDashboard } from './pages/parent/ParentDashboard';
+
 import { ParentChildrenPage } from './pages/parent/ParentChildrenPage';
 import { ParentPerformancePage } from './pages/parent/ParentPerformancePage';
 import { ParentAttendancePage } from './pages/parent/ParentAttendancePage';
@@ -90,8 +96,19 @@ function App() {
             <Route path="attendance" element={<StudentAttendancePage />} />
             <Route path="leaderboard" element={<StudentLeaderboardPage />} />
             <Route path="behavior" element={<StudentBehaviorPage />} />
+            <Route path="games" element={<StudentGamesPage />} />
             <Route path="profile" element={<StudentProfilePage />} />
           </Route>
+
+          {/* Full Screen Game Route */}
+          <Route
+            path="/student/games/:id/play"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <GamePlayerPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Teacher Routes */}
           <Route
@@ -110,6 +127,8 @@ function App() {
             <Route path="quizzes" element={<TeacherQuizzesPage />} />
             <Route path="students" element={<TeacherStudentsPage />} />
             <Route path="attendance" element={<AttendancePage />} />
+            <Route path="games" element={<TeacherGamesPage />} />
+            <Route path="games/generate" element={<TeacherGameGeneratorPage />} />
             <Route path="behavior" element={<BehaviorManagementPage />} />
             <Route path="behavior/generate" element={<AIBehaviorReportPage />} />
             <Route path="messages" element={<MessagesPage />} />

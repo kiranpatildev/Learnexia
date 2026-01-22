@@ -38,6 +38,7 @@ urlpatterns = [
     path('api/v1/lectures/', include('apps.lectures.urls')),
     path('api/v1/notes/', include('apps.notes.urls')),
     path('api/v1/flashcards/', include('apps.flashcards.urls')),
+    path('api/v1/games/', include('apps.games.urls')),
     path('api/v1/assignments/', include('apps.assignments.urls')),
     path('api/v1/assessments/', include('apps.assessments.urls')),
     path('api/v1/gamification/', include('apps.gamification.urls')),

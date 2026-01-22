@@ -21,12 +21,15 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
+import gamesService from '../../services/games.service';
+
 
 export function StudentDashboard() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
     const [loading, setLoading] = useState(true);
     const [lectures, setLectures] = useState([]);
+    const [recentAttempts, setRecentAttempts] = useState([]);
     const [stats, setStats] = useState({
         level: 12,
         currentXP: 2450,
@@ -60,6 +63,15 @@ export function StudentDashboard() {
                 const lectureData = lecturesRes.data.results || lecturesRes.data || [];
                 console.log('Fetched lectures:', lectureData.length);
                 setLectures(lectureData);
+
+                // Fetch recent game attempts
+                try {
+                    const attemptsRes = await gamesService.getAttempts({ limit: 3, ordering: '-created_at' });
+                    setRecentAttempts(attemptsRes.results || attemptsRes || []);
+                } catch (err) {
+                    console.error('Error fetching game attempts:', err);
+                }
+
 
                 // Update stats from user data
                 setStats(prev => ({
@@ -150,16 +162,6 @@ export function StudentDashboard() {
                         <div className="flex items-center gap-2 bg-amber-100 px-3 py-2 rounded-lg">
                             <Award className="w-4 h-4 text-amber-700" />
                             <span className="text-sm font-semibold text-gray-900">{stats.totalXP} XP</span>
-                        </div>
-
-                        {/* Teacher/Student Buttons */}
-                        <div className="flex items-center gap-2">
-                            <button className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                Teacher
-                            </button>
-                            <button className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg">
-                                Student
-                            </button>
                         </div>
 
                         {/* Notification Bell */}
@@ -296,6 +298,66 @@ export function StudentDashboard() {
                                 )}
                             </CardContent>
                         </Card>
+
+                        {/* Recent Games */}
+                        <Card className="border-0 shadow-sm">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-1.5 bg-blue-100 rounded-lg">
+                                            <span className="text-lg">🎮</span>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-gray-900">Recent Games</h3>
+                                    </div>
+                                    <button
+                                        onClick={() => navigate('/student/games')}
+                                        className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                    >
+                                        All Games
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                {recentAttempts.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <div className="text-4xl mb-3">🎲</div>
+                                        <p className="text-gray-600 mb-4">No games played yet</p>
+                                        <Button
+                                            onClick={() => navigate('/student/games')}
+                                            variant="outline"
+                                            className="bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100"
+                                        >
+                                            Play Your First Game
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {recentAttempts.map((attempt) => (
+                                            <div
+                                                key={attempt.id} // Assuming attempt has unique ID
+                                                className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50/30 transition-all flex items-center justify-between"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${attempt.is_completed ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
+                                                        }`}>
+                                                        {attempt.is_completed ? <CheckCircle className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-semibold text-gray-900">{attempt.lecture_game_title || 'Educational Game'}</h4>
+                                                        <p className="text-xs text-gray-500">
+                                                            Score: {attempt.final_score} • {new Date(attempt.completed_at || attempt.started_at).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Badge variant="secondary" className="bg-gray-100">
+                                                    {attempt.final_score} XP
+                                                </Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Right Column - 1/3 width */}
@@ -312,6 +374,15 @@ export function StudentDashboard() {
                                         <div className="flex items-center gap-3">
                                             <BookOpen className="w-5 h-5 text-gray-900" />
                                             <span className="font-semibold text-gray-900">Browse Lectures</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => navigate('/student/games')}
+                                        className="w-full p-4 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors text-left text-white shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xl">🎮</span>
+                                            <span className="font-bold">Play Games</span>
                                         </div>
                                     </button>
                                     <button
@@ -373,6 +444,6 @@ export function StudentDashboard() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

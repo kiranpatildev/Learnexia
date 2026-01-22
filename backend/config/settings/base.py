@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'apps.lectures',
     'apps.notes',
     'apps.flashcards',
+    'apps.games',
     'apps.assignments',
     'apps.assessments',
     'apps.gamification',

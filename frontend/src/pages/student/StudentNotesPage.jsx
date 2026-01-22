@@ -126,16 +126,6 @@ export function StudentNotesPage() {
                             </span>
                         </div>
 
-                        {/* Teacher/Student Buttons */}
-                        <div className="flex items-center gap-2">
-                            <button className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                Teacher
-                            </button>
-                            <button className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg">
-                                Student
-                            </button>
-                        </div>
-
                         {/* Notification Bell */}
                         <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                             <Bell className="w-5 h-5 text-gray-700" />
