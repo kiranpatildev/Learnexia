@@ -35,7 +35,7 @@ class GameGeneratorService:
         self.client = GeminiConfig.get_client()
         self.model_name = GeminiConfig.MODEL_NAME
     
-    def generate_fall_drop_game(
+    def generate_quick_drop_game(
         self,
         lecture: Lecture,
         difficulty: str = 'MEDIUM',
@@ -65,7 +65,7 @@ class GameGeneratorService:
             self._validate_question_count(question_count)
             
             # Build prompt
-            prompt = self._build_fall_drop_prompt(
+            prompt = self._build_quick_drop_prompt(
                 lecture=lecture,
                 difficulty=difficulty,
                 question_count=question_count
@@ -73,7 +73,7 @@ class GameGeneratorService:
             
             # Call Gemini API
             logger.info(
-                f"[GAME GEN] Generating {difficulty} Fall Drop game "
+                f"[GAME GEN] Generating {difficulty} Quick Drop game "
                 f"({question_count} questions) for: {lecture.title}"
             )
             
@@ -158,6 +158,94 @@ class GameGeneratorService:
                 'error': f'Game generation failed: {str(e)}',
                 'questions': [],
             }
+            
+    def generate_hot_potato_game(
+        self,
+        lecture: Lecture,
+        difficulty: str = 'MEDIUM',
+        question_count: int = 15
+    ) -> Dict[str, Any]:
+        """
+        Generate Hot Potato game content (Speed/Reaction)
+        """
+        try:
+            # Validate inputs
+            self._validate_lecture(lecture)
+            self._validate_difficulty(difficulty)
+            self._validate_question_count(question_count)
+            
+            # Build prompt
+            prompt = self._build_hot_potato_prompt(
+                lecture=lecture,
+                difficulty=difficulty,
+                question_count=question_count
+            )
+            
+            # Call Gemini API
+            logger.info(
+                f"[GAME GEN] Generating {difficulty} Hot Potato game "
+                f"({question_count} questions) for: {lecture.title}"
+            )
+            
+            # Configuration
+            generation_config = {
+                'temperature': 0.7,
+                'top_p': 0.95,
+                'top_k': 40,
+                'max_output_tokens': 4096,
+                'response_mime_type': 'application/json',
+            }
+            
+            # Retry logic
+            import time
+            max_retries = 3
+            retry_delay = 2
+            response = None
+            last_error = None
+            
+            for attempt in range(max_retries):
+                try:
+                    response = self.client.models.generate_content(
+                        model=self.model_name,
+                        contents=prompt,
+                        config=generation_config
+                    )
+                    break
+                except Exception as e:
+                    last_error = e
+                    if "503" in str(e) or "overloaded" in str(e).lower():
+                        if attempt < max_retries - 1:
+                            time.sleep(retry_delay)
+                            retry_delay *= 2
+                            continue
+                    raise e
+            
+            if not response:
+                raise last_error or Exception("Failed to get response")
+                
+            # Parse response
+            game_data = self._parse_response(response.text)
+            
+            # Validate
+            self._validate_game_data(game_data, question_count)
+            
+            # Calculate cost
+            cost_info = self._calculate_cost(response)
+            
+            return {
+                'success': True,
+                'questions': game_data['questions'],
+                'metadata': game_data.get('metadata', {}),
+                'cost': cost_info,
+            }
+            
+        except Exception as e:
+            logger.error(f"[GAME GEN] Hot Potato Error: {str(e)}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e),
+                'questions': []
+            }
     
     def _validate_lecture(self, lecture: Lecture) -> None:
         """Validate lecture has sufficient content"""
@@ -186,13 +274,13 @@ class GameGeneratorService:
                 f'Question count must be between {self.MIN_QUESTIONS} and {self.MAX_QUESTIONS}'
             )
     
-    def _build_fall_drop_prompt(
+    def _build_quick_drop_prompt(
         self,
         lecture: Lecture,
         difficulty: str,
         question_count: int
     ) -> str:
-        """Build optimized prompt for Fall Drop game generation"""
+        """Build optimized prompt for Quick Drop game generation"""
         
         # Get difficulty-specific instructions
         difficulty_instructions = self._get_difficulty_instructions(difficulty)
@@ -212,7 +300,7 @@ class GameGeneratorService:
 {transcript}
 
 **TASK:**
-Generate {question_count} high-quality multiple-choice questions for the "Fall Drop" reaction-based game.
+Generate {question_count} high-quality multiple-choice questions for the "Quick Drop" reaction-based game.
 
 **REQUIREMENTS:**
 
@@ -281,6 +369,95 @@ Return ONLY valid JSON (no markdown, no code blocks). Structure:
 
 Generate the questions now:"""
         
+        return prompt
+    
+    def _build_hot_potato_prompt(
+        self,
+        lecture: Lecture,
+        difficulty: str,
+        question_count: int
+    ) -> str:
+        """Build optimized prompt for Hot Potato game"""
+        
+        transcript = lecture.transcript[:8000]
+        
+        prompt = f"""You are an expert educational content creator for a high-pressure quiz game called "Hot Potato."
+
+**CONTEXT:**
+- Subject: {lecture.classroom.subject.name if hasattr(lecture, 'classroom') else 'General'}
+- Lecture Title: {lecture.title}
+- Topic: {lecture.topic or 'Extracted from content'}
+- Difficulty Mode: {difficulty}
+
+**LECTURE CONTENT:**
+{transcript}
+
+**GAME MECHANICS:**
+This is a SPEED game where students have 6-15 seconds per question. Timer decreases with each question.
+
+**TASK:**
+Generate {question_count} multiple-choice questions with PROGRESSIVE DIFFICULTY.
+
+**DIFFICULTY PROGRESSION:**
+- First 30%: EASY (direct recall, obvious answers)
+- Middle 40%: MEDIUM (understanding required)
+- Last 30%: HARD (application, analysis, tricky distractors)
+
+**REQUIREMENTS:**
+
+1. **Time Pressure Optimization:**
+   - Keep questions concise (under 20 words)
+   - Avoid complex calculations or long reading
+   - Questions must be answerable quickly if student knows content
+   - No multi-step reasoning (too slow for this format)
+
+2. **Answer Options:**
+   - EXACTLY 4 options (A, B, C, D)
+   - Options should be 10-40 characters each
+   - All options must be plausible at first glance
+   - Place correct answer at RANDOM positions
+   - For HARD questions: Use very similar distractors
+
+3. **Explanations:**
+   - 1-2 sentences maximum (students are rushed)
+   - Focus on WHY the answer is correct
+
+**OUTPUT FORMAT (JSON ONLY):**
+{{
+  "questions": [
+    {{
+      "id": "q1",
+      "question": "What does IoT stand for?",
+      "options": [
+        "Internet of Things",
+        "Internet of Thoughts", 
+        "Intelligent Object Technology",
+        "Integrated Online Tools"
+      ],
+      "correct_index": 0,
+      "explanation": "IoT stands for Internet of Things, referring to connected physical devices.",
+      "difficulty": "easy",
+      "time_limit": 15,
+      "order": 1
+    }}
+  ],
+  "metadata": {{
+    "total_questions": {question_count},
+    "difficulty_distribution": {{"easy": 5, "medium": 5, "hard": 5}},
+    "topics_covered": ["..."],
+    "average_time_per_question": 9
+  }}
+}}
+
+**VALIDATION:**
+- Exactly {question_count} questions
+- Each has exactly 4 options
+- correct_index is 0, 1, 2, or 3
+- options is a list of 4 strings
+- difficulty is 'easy', 'medium', or 'hard'
+- No duplicate questions
+
+Generate the questions now:"""
         return prompt
     
     def _get_difficulty_instructions(self, difficulty: str) -> str:

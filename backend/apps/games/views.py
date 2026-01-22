@@ -156,11 +156,37 @@ class LectureGameViewSet(viewsets.ModelViewSet):
             
             # Generate game content
             generator = GameGeneratorService()
-            result = generator.generate_fall_drop_game(
-                lecture=lecture,
-                difficulty=difficulty,
-                question_count=question_count
-            )
+            
+            if game_type == 'hot_potato':
+                result = generator.generate_hot_potato_game(
+                    lecture=lecture,
+                    difficulty=difficulty,
+                    question_count=question_count
+                )
+                
+                game_config = {
+                    'starting_time': 15,
+                    'time_decrement': 1.5,
+                    'minimum_time': 6,
+                    'lives': 3,
+                    'base_points_per_second': 50,
+                    'combo_multiplier': 1.2
+                }
+            else:
+                # Default to quick_drop
+                result = generator.generate_quick_drop_game(
+                    lecture=lecture,
+                    difficulty=difficulty,
+                    question_count=question_count
+                )
+                
+                game_config = {
+                    'lives': 3,
+                    'base_speed': 1.5,
+                    'time_limit_per_question': 10,
+                    'points_per_correct': 100,
+                    'combo_multiplier': 1.5,
+                }
             
             if not result['success']:
                 return Response({
@@ -179,13 +205,8 @@ class LectureGameViewSet(viewsets.ModelViewSet):
                     question_count=len(result['questions']),
                     game_data={
                         'version': '1.0',
-                        'game_config': {
-                            'lives': 3,
-                            'base_speed': 1.5,
-                            'time_limit_per_question': 10,
-                            'points_per_correct': 100,
-                            'combo_multiplier': 1.5,
-                        },
+                        'version': '1.0',
+                        'game_config': game_config,
                         'questions': result['questions'],
                         'metadata': result.get('metadata', {})
                     },
@@ -265,23 +286,30 @@ class LectureGameViewSet(viewsets.ModelViewSet):
         ).first()
         
         if active_attempt:
-            return Response({
-                'error': 'ACTIVE_SESSION_EXISTS',
-                'detail': 'You have an incomplete game session',
-                'existing_attempt_id': active_attempt.id
-            }, status=status.HTTP_409_CONFLICT)
-        
-        # Create new attempt
-        attempt = GameAttempt.objects.create(
-            student=request.user,
-            lecture_game=game,
-            max_possible_score=len(game.game_data['questions']) * 100,
-            lives_remaining=game.game_data['game_config']['lives']
-        )
-        
-        # Increment play count
-        game.total_plays += 1
-        game.save(update_fields=['total_plays'])
+            # Restart the existing attempt (Reset state)
+            logger.info(f"[GAME] Restarting active attempt {active_attempt.id} for user {request.user.id}")
+            attempt = active_attempt
+            attempt.questions_answered = 0
+            attempt.correct_answers = 0
+            attempt.wrong_answers = 0
+            attempt.final_score = 0
+            attempt.lives_remaining = game.game_data['game_config']['lives']
+            attempt.max_combo_achieved = 0
+            attempt.detailed_results = {'answers': []}
+            attempt.started_at = timezone.now() # Restart timer
+            attempt.save()
+        else:
+            # Create new attempt
+            attempt = GameAttempt.objects.create(
+                student=request.user,
+                lecture_game=game,
+                max_possible_score=len(game.game_data['questions']) * 100,
+                lives_remaining=game.game_data['game_config']['lives']
+            )
+            
+            # Increment play count
+            game.total_plays += 1
+            game.save(update_fields=['total_plays'])
         
         # Prepare questions (WITHOUT correct answers)
         questions = []
@@ -441,8 +469,21 @@ class GameAttemptViewSet(viewsets.ReadOnlyModelViewSet):
         
         if is_correct:
             attempt.correct_answers += 1
-            # Calculate points with combo
-            points = int(100 * (1 + (attempt.max_combo_achieved * 0.5)))
+            
+            # SCORING LOGIC
+            game_type = attempt.lecture_game.template.code
+            
+            if game_type == 'hot_potato':
+                # Hot Potato Scoring
+                base_points = 100
+                time_remaining = float(data.get('time_remaining', 0))
+                # Bonus: 50 points per second remaining (e.g. 5s = 250 extra)
+                speed_bonus = int(time_remaining * 50)
+                points = int((base_points + speed_bonus) * (1 + (attempt.max_combo_achieved * 0.2)))
+            else:
+                # Standard / Quick Drop logic
+                points = int(100 * (1 + (attempt.max_combo_achieved * 0.5)))
+                
             attempt.final_score += points
         else:
             attempt.wrong_answers += 1

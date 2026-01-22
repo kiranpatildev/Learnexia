@@ -40,9 +40,9 @@ export function TeacherGameGeneratorPage() {
 
                 // Pre-select if available
                 if (templatesRes.length > 0) {
-                    // Prefer 'fall_drop'
-                    const fallDrop = templatesRes.find(t => t.code === 'fall_drop');
-                    setSelectedTemplate(fallDrop ? fallDrop.code : templatesRes[0].code);
+                    // Prefer 'quick_drop'
+                    const quickDrop = templatesRes.find(t => t.code === 'quick_drop');
+                    setSelectedTemplate(quickDrop ? quickDrop.code : templatesRes[0].code);
                 }
             } catch (err) {
                 console.error("Failed to load resources:", err);

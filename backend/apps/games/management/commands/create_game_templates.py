@@ -14,8 +14,8 @@ class Command(BaseCommand):
         
         templates = [
             {
-                'code': 'fall_drop',
-                'name': 'Fall Drop',
+                'code': 'quick_drop',
+                'name': 'Quick Drop',
                 'description': 'Click correct answers before they fall! Test your reaction time and knowledge.',
                 'icon': '🎯',
                 'game_type': 'REACTION',
@@ -44,6 +44,17 @@ class Command(BaseCommand):
                 'min_questions': 6,
                 'max_questions': 16,
                 'default_time_per_question': 20,
+                'supports_difficulty': True,
+            },
+            {
+                'code': 'hot_potato',
+                'name': 'Hot Potato',
+                'description': 'Answer before the timer explodes! Speed and accuracy under pressure.',
+                'icon': '💣',
+                'game_type': 'REACTION',
+                'min_questions': 10,
+                'max_questions': 20,
+                'default_time_per_question': 15,
                 'supports_difficulty': True,
             },
         ]

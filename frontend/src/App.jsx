@@ -33,7 +33,7 @@ import { TeacherProfilePage } from './pages/teacher/TeacherProfilePage';
 import { StudentGamesPage } from './pages/student/StudentGamesPage';
 import { TeacherGamesPage } from './pages/teacher/TeacherGamesPage';
 import { TeacherGameGeneratorPage } from './pages/teacher/TeacherGameGeneratorPage';
-import FallDropGame from './components/games/FallDropGame/FallDropGame';
+
 import { GamePlayerPage } from './pages/student/GamePlayerPage';
 import { ParentDashboard } from './pages/parent/ParentDashboard';
 

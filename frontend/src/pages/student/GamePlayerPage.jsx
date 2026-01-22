@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import gamesService from '../../services/games.service';
-import FallDropGame from '../../components/games/FallDropGame/FallDropGame';
+import QuickDropGame from '../../components/games/QuickDropGame/QuickDropGame';
+import { HotPotatoGame } from '../../components/games/HotPotatoGame/HotPotatoGame';
 import { Button } from '../../components/ui/button';
 
 export function GamePlayerPage() {
@@ -54,8 +55,12 @@ export function GamePlayerPage() {
     // Router Logic based on Template Code
     const templateCode = game.template?.code;
 
-    if (templateCode === 'fall_drop') {
-        return <FallDropGame />;
+    if (templateCode === 'fall_drop' || templateCode === 'quick_drop') {
+        return <QuickDropGame />;
+    }
+
+    if (templateCode === 'hot_potato') {
+        return <HotPotatoGame />;
     }
 
     // Placeholder for other game types

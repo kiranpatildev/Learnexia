@@ -7,7 +7,7 @@ import GameHUD from './GameHUD';
 import ResultsScreen from './ResultsScreen';
 import ExplanationModal from './ExplanationModal';
 
-export default function FallDropGame() {
+export default function QuickDropGame() {
     const { id: gameId } = useParams();
     const navigate = useNavigate();
 

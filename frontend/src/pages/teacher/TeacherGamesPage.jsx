@@ -86,9 +86,10 @@ export function TeacherGamesPage() {
 
     const getGameIcon = (gameType) => {
         const icons = {
-            'fall_drop': '🎯',
+            'quick_drop': '🎯',
             'word_scramble': '🔤',
             'match_pairs': '🃏',
+            'hot_potato': '💣',
         };
         return icons[gameType] || '🎮';
     };
