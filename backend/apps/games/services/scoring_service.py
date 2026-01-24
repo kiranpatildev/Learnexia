@@ -102,6 +102,61 @@ class ScoringService:
         return int(correct_answers * base_points * combo_multiplier)
     
     @classmethod
+    def calculate_match_pairs_score(cls, pair_count, flips_made, time_taken, matches_found):
+        """
+        Calculate score for Match the Pairs game.
+        """
+        # Base points per match
+        base_points = matches_found * 100
+        
+        # Perfect flips bonus
+        # Perfect = 2 flips per pair (flip both cards once)
+        perfect_flips = pair_count * 2
+        extra_flips = max(0, flips_made - perfect_flips)
+        flip_penalty = extra_flips * 10
+        efficiency_bonus = max(0, (perfect_flips - extra_flips) * 10)
+        
+        # Memory performance bonus
+        # Based on how close to perfect they got
+        # Avoid division by zero
+        denom = max(flips_made, perfect_flips)
+        if denom == 0:
+            memory_efficiency = 1.0
+        else:
+            memory_efficiency = perfect_flips / denom
+            
+        memory_bonus = int(memory_efficiency * 200)
+        
+        # Time bonus (optional - can disable)
+        # Faster completion = more points
+        # Expected: 2 seconds per pair
+        expected_time = pair_count * 2
+        
+        if time_taken < expected_time and matches_found == pair_count:
+            # Only award time bonus if completed
+            time_bonus = int((expected_time - time_taken) * 5)
+        else:
+            time_bonus = 0
+        
+        if time_bonus < 0:
+            time_bonus = 0
+            
+        # Calculate final score
+        final_score = base_points + efficiency_bonus + memory_bonus + time_bonus - flip_penalty
+        final_score = max(0, final_score)  # No negative scores
+        
+        return {
+            'base_points': base_points,
+            'efficiency_bonus': efficiency_bonus,
+            'memory_bonus': memory_bonus,
+            'time_bonus': time_bonus,
+            'flip_penalty': flip_penalty,
+            'final_score': final_score,
+            'perfect_game': flips_made == perfect_flips and matches_found == pair_count,
+            'memory_efficiency': round(memory_efficiency * 100, 1)
+        }
+    
+    @classmethod
     @transaction.atomic
     def update_leaderboard(cls, attempt: GameAttempt) -> Dict[str, Any]:
         """

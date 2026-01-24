@@ -4,6 +4,8 @@ import { Loader2, AlertTriangle, ArrowLeft } from 'lucide-react';
 import gamesService from '../../services/games.service';
 import QuickDropGame from '../../components/games/QuickDropGame/QuickDropGame';
 import { HotPotatoGame } from '../../components/games/HotPotatoGame/HotPotatoGame';
+import { MatchPairsGame } from '../../components/games/MatchPairsGame/MatchPairsGame';
+import CrosswordGame from '../../components/games/CrosswordGame/CrosswordGame';
 import { Button } from '../../components/ui/button';
 
 export function GamePlayerPage() {
@@ -61,6 +63,14 @@ export function GamePlayerPage() {
 
     if (templateCode === 'hot_potato') {
         return <HotPotatoGame />;
+    }
+
+    if (templateCode === 'match_pairs') {
+        return <MatchPairsGame />;
+    }
+
+    if (templateCode === 'crossword') {
+        return <CrosswordGame />;
     }
 
     // Placeholder for other game types

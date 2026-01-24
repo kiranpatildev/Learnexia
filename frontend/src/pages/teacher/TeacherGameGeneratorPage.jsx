@@ -144,7 +144,7 @@ export function TeacherGameGeneratorPage() {
                                 <label className="text-sm font-medium text-gray-700">Game Type</label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {templates.map(template => {
-                                        const isComingSoon = ['word_scramble', 'match_pairs'].includes(template.code);
+                                        const isComingSoon = ['word_scramble'].includes(template.code);
                                         return (
                                             <div
                                                 key={template.code}

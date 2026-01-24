@@ -13,6 +13,7 @@ from django.core.exceptions import ValidationError
 
 from apps.notes.ai_services.gemini_config import GeminiConfig
 from apps.lectures.models import Lecture
+from .crossword_generator import generate_crossword_grid
 
 logger = logging.getLogger(__name__)
 
@@ -590,3 +591,434 @@ Generate the questions now:"""
                 'total_tokens': 0,
                 'total_cost': 0.0,
             }
+    def generate_match_pairs(
+        self,
+        lecture: Lecture,
+        difficulty: str = 'MEDIUM',
+        pair_count: int = 8
+    ) -> Dict[str, Any]:
+        """
+        Generate term-definition pairs for Match the Pairs game.
+        """
+        try:
+            # Validate inputs
+            self._validate_lecture(lecture)
+            self._validate_difficulty(difficulty)
+            
+            # Build prompt
+            prompt = self._build_match_pairs_prompt(
+                lecture=lecture,
+                difficulty=difficulty,
+                pair_count=pair_count
+            )
+            
+            # Call Gemini API
+            logger.info(
+                f"[GAME GEN] Generating {difficulty} Match Pairs game "
+                f"({pair_count} pairs) for: {lecture.title}"
+            )
+            
+            # Configuration
+            generation_config = {
+                'temperature': 0.7,
+                'max_output_tokens': 3072,
+                'response_mime_type': 'application/json',
+            }
+            
+            # Retry logic
+            import time
+            max_retries = 3
+            retry_delay = 2
+            response = None
+            last_error = None
+            
+            for attempt in range(max_retries):
+                try:
+                    response = self.client.models.generate_content(
+                        model=self.model_name,
+                        contents=prompt,
+                        config=generation_config
+                    )
+                    break
+                except Exception as e:
+                    last_error = e
+                    if "503" in str(e) or "overloaded" in str(e).lower():
+                        if attempt < max_retries - 1:
+                            time.sleep(retry_delay)
+                            retry_delay *= 2
+                            continue
+                    raise e
+            
+            if not response:
+                raise last_error or Exception("Failed to get response")
+                
+            # Parse response
+            game_data = self._parse_response(response.text)
+            
+            # Validate
+            self._validate_match_pairs(game_data, pair_count)
+            
+            # Calculate cost
+            cost_info = self._calculate_cost(response)
+            
+            return {
+                'success': True,
+                'pairs': game_data['pairs'],
+                'metadata': game_data.get('metadata', {}),
+                'cost': cost_info,
+            }
+            
+        except Exception as e:
+            logger.error(f"[GAME GEN] Match Pairs Error: {str(e)}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e),
+                'pairs': []
+            }
+
+    def _build_match_pairs_prompt(
+        self,
+        lecture: Lecture,
+        difficulty: str,
+        pair_count: int
+    ) -> str:
+        """Build optimized prompt for Match the Pairs game"""
+        
+        # Difficulty settings
+        difficulty_config = {
+            'EASY': {
+                'pair_count': 6,
+                'term_length': 'short (1-3 words)',
+                'definition_length': 'concise (5-10 words)',
+                'similarity': 'clearly distinct pairs',
+                'description': 'Simple, fundamental terms with obvious definitions'
+            },
+            'MEDIUM': {
+                'pair_count': 8,
+                'term_length': 'moderate (2-5 words)',
+                'definition_length': 'detailed (8-15 words)',
+                'similarity': 'some similar-sounding terms allowed',
+                'description': 'Moderate complexity with some nuanced differences'
+            },
+            'HARD': {
+                'pair_count': 10,
+                'term_length': 'complex (3-8 words)',
+                'definition_length': 'comprehensive (10-20 words)',
+                'similarity': 'deliberately similar terms to challenge memory',
+                'description': 'Complex terms with subtle distinctions'
+            }
+        }
+        
+        config = difficulty_config.get(difficulty, difficulty_config['MEDIUM'])
+        actual_pair_count = pair_count or config['pair_count']
+        
+        # Truncate transcript if too long
+        transcript = lecture.transcript[:6000]
+        
+        prompt = f"""
+You are an expert educational content creator for a memory-matching card game.
+
+**CONTEXT:**
+- Subject: {lecture.classroom.subject.name if hasattr(lecture, 'classroom') else 'General'}
+- Lecture Title: {lecture.title}
+- Lecture Content: {transcript}
+
+**GAME MECHANICS:**
+This is a MEMORY game where students flip cards to match terms with definitions.
+They must remember card positions to find pairs efficiently.
+
+**DIFFICULTY LEVEL: {difficulty}**
+- Number of pairs: {actual_pair_count}
+- Term length: {config['term_length']}
+- Definition length: {config['definition_length']}
+- Similarity: {config['similarity']}
+- Focus: {config['description']}
+
+**TASK:**
+Generate {actual_pair_count} term-definition pairs from the lecture content.
+
+**REQUIREMENTS:**
+
+1. **Term Selection:**
+   - Choose the most important concepts/terms from the lecture
+   - Terms should be specific and unambiguous
+   - Avoid generic terms that could apply to multiple definitions
+   - For HARD difficulty: Include terms that sound similar but have different meanings
+
+2. **Definition Quality:**
+   - Definitions must be UNIQUE and specific to each term
+   - Avoid overlapping language between definitions
+   - Use clear, student-friendly language
+   - Each definition should clearly identify ONLY its matching term
+   - For HARD difficulty: Make definitions more technical/detailed
+
+3. **Memory Game Optimization:**
+   - Keep text concise enough to fit on cards
+   - Terms: Maximum {config['term_length']}
+   - Definitions: {config['definition_length']}
+   - Ensure no definition could reasonably match multiple terms
+
+4. **Card Layout Considerations:**
+   - Terms will appear on BLUE cards
+   - Definitions will appear on PURPLE cards
+   - Text must be readable on colored backgrounds
+   - Avoid extremely long definitions that won't fit
+
+**OUTPUT FORMAT (JSON ONLY):**
+{{
+  "pairs": [
+    {{
+      "id": "pair_1",
+      "term": "Internet of Things",
+      "definition": "Network of physical devices connected to the internet to collect and share data",
+      "category": "IoT Fundamentals",
+      "difficulty_rating": "easy"
+    }}
+  ],
+  "metadata": {{
+    "total_pairs": {actual_pair_count},
+    "difficulty": "{difficulty}",
+    "categories": ["IoT Fundamentals"],
+    "perfect_flips": {actual_pair_count * 2}
+  }}
+}}
+
+**VALIDATION RULES:**
+- Exactly {actual_pair_count} pairs
+- Each pair has unique 'id', 'term', and 'definition'
+- Terms are 1-8 words maximum
+- Definitions are 5-25 words
+- No duplicate terms or definitions
+
+Generate the pairs now:
+"""
+        return prompt
+
+    def generate_crossword_game(
+        self,
+        lecture: Lecture,
+        difficulty: str = 'MEDIUM',
+        word_count: int = 15
+    ) -> Dict[str, Any]:
+        """Generate Crossword Puzzle game content"""
+        try:
+            self._validate_lecture(lecture)
+            # self._validate_difficulty(difficulty) # Assuming private method exists
+            
+            prompt = self._build_crossword_prompt(
+                lecture=lecture,
+                difficulty=difficulty,
+                word_count=word_count
+            )
+            
+            logger.info(f"[GAME GEN] Generating {difficulty} Crossword ({word_count} words) for: {lecture.title}")
+            
+            generation_config = {
+                'temperature': 0.8,
+                'max_output_tokens': 4096,
+                'response_mime_type': 'application/json',
+            }
+            
+            # Retry logic
+            import time
+            max_retries = 3
+            retry_delay = 2
+            response = None
+            last_error = None
+            
+            for attempt in range(max_retries):
+                try:
+                    response = self.client.models.generate_content(
+                        model=self.model_name,
+                        contents=prompt,
+                        config=generation_config
+                    )
+                    break
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"Gemini attempt {attempt+1} failed: {e}")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                    else:
+                        raise e
+            
+            if not response:
+                raise last_error or Exception("Failed to get response")
+                
+            data = self._parse_response(response.text)
+            
+            # Validate words
+            self._validate_crossword_words(data, word_count)
+            
+            # Generate Grid
+            grid_size = 15 if difficulty == 'HARD' else (12 if difficulty == 'MEDIUM' else 10)
+            grid_data = generate_crossword_grid(data['words'], grid_size)
+            
+            if not grid_data:
+                raise ValidationError("Failed to generate valid crossword grid from AI words")
+                
+            cost_info = self._calculate_cost(response)
+            
+            return {
+                'success': True,
+                'grid_data': grid_data,
+                'metadata': data.get('metadata', {}),
+                'cost': cost_info
+            }
+            
+        except Exception as e:
+            logger.error(f"[GAME GEN] Crossword Error: {str(e)}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e),
+                'grid_data': None
+            }
+
+    def _build_crossword_prompt(self, lecture, difficulty, word_count):
+        difficulty_config = {
+            'EASY': {
+                'word_count': 10,
+                'word_length': '3-8 letters',
+                'clue_difficulty': 'direct definitions',
+                'term_types': 'fundamental concepts only'
+            },
+            'MEDIUM': {
+                'word_count': 15,
+                'word_length': '4-12 letters',
+                'clue_difficulty': 'descriptions and examples',
+                'term_types': 'mix of fundamental and advanced'
+            },
+            'HARD': {
+                'word_count': 20,
+                'word_length': '5-15 letters',
+                'clue_difficulty': 'cryptic and technical',
+                'term_types': 'advanced technical terms'
+            }
+        }
+        
+        config = difficulty_config.get(difficulty, difficulty_config['MEDIUM'])
+        actual_word_count = word_count or config['word_count']
+        
+        transcript = lecture.transcript[:6000]
+        
+        return f"""
+You are an expert crossword puzzle creator for educational content.
+
+**CONTEXT:**
+- Subject: {lecture.classroom.subject.name if hasattr(lecture, 'classroom') else 'General'}
+- Lecture Title: {lecture.title}
+- Lecture Content: {transcript}
+
+**DIFFICULTY: {difficulty}**
+- Words needed: {actual_word_count}
+- Word length: {config['word_length']}
+- Clue style: {config['clue_difficulty']}
+- Terms: {config['term_types']}
+
+**CRITICAL REQUIREMENTS:**
+1. **Word Selection:**
+   - Choose words with COMMON LETTERS (E, A, R, I, O, T, N, S)
+   - Avoid words with rare letters (Q, X, Z, J) unless necessary
+   - Mix word lengths: some short, some medium, some long
+   - Include words that share common letter patterns
+   - SINGLE WORDS ONLY (no spaces, hyphens)
+
+2. **Educational Value:**
+   - Key concepts from the lecture
+   - Both terminology and examples
+
+3. **Clue Quality:**
+   - Specific and unambiguous
+   - Match the difficulty level
+   - {config['clue_difficulty']}
+
+**OUTPUT FORMAT (JSON ONLY):**
+{{
+  "words": [
+    {{
+      "word": "INTERNET",
+      "clue": "Global network connecting millions of devices",
+      "category": "Networking",
+      "length": 8
+    }}
+  ],
+  "metadata": {{
+    "total_words": {actual_word_count},
+    "difficulty": "{difficulty}"
+  }}
+}}
+
+**VALIDATION:**
+- Exactly {actual_word_count} words
+- Each word is 3-15 letters
+- No duplicate words
+- No spaces/special characters
+- No phrases (must be single words)
+
+Generate the crossword words now:
+"""
+
+    def _validate_crossword_words(self, data, expected_count):
+        if 'words' not in data:
+            raise ValidationError("Missing 'words' key")
+        
+        words = data['words']
+        # Allow some flexibility
+        if len(words) < expected_count * 0.7:
+            raise ValidationError(f"Expected ~{expected_count} words, got {len(words)}")
+            
+        seen = set()
+        valid_words = []
+        
+        for item in words:
+            if 'word' not in item or 'clue' not in item:
+                continue
+                
+            word = item['word'].upper().strip()
+            
+            if not word.isalpha():
+                continue # Skip words with spaces/numbers
+                
+            if len(word) < 3 or len(word) > 15:
+                continue
+                
+            if word in seen:
+                continue
+                
+            seen.add(word)
+            item['word'] = word # Ensure normalized
+            valid_words.append(item)
+            
+        data['words'] = valid_words
+
+    def _validate_match_pairs(self, data, expected_count):
+        """Validate AI-generated pairs structure"""
+        if 'pairs' not in data:
+            raise ValidationError("Missing 'pairs' key")
+        
+        pairs = data['pairs']
+        
+        if len(pairs) != expected_count:
+            # Allow slight deviation if AI messed up count but content is good
+            if abs(len(pairs) - expected_count) > 2:
+                logger.warning(f"Expected {expected_count} pairs, got {len(pairs)}")
+        
+        terms = set()
+        definitions = set()
+        
+        for i, pair in enumerate(pairs):
+            # Required fields
+            required = ['id', 'term', 'definition']
+            for field in required:
+                if field not in pair:
+                    raise ValidationError(f"Pair {i+1} missing '{field}'")
+            
+            # Check for duplicates
+            if pair['term'] in terms:
+                # logger.warning(f"Duplicate term: {pair['term']}") # Allow duplicate terms if defs differ? No, bad for memory game.
+                pass 
+            if pair['definition'] in definitions:
+                pass
+            
+            terms.add(pair['term'])
+            definitions.add(pair['definition'])

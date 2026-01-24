@@ -83,6 +83,36 @@ const gamesService = {
     },
 
     /**
+     * Submit a match pair
+     * @param {number} attemptId - Attempt ID
+     * @param {Object} matchData - Match data
+     */
+    submitMatch: async (attemptId, matchData) => {
+        const response = await api.post(`/games/attempts/${attemptId}/match_pair/`, matchData);
+        return response.data;
+    },
+
+    /**
+     * Check crossword answers
+     * @param {number} attemptId - Attempt ID
+     * @param {Object} answers - { '1-across': 'ANSWER' }
+     */
+    checkCrossword: async (attemptId, answers) => {
+        const response = await api.post(`/games/attempts/${attemptId}/check_crossword/`, { answers });
+        return response.data;
+    },
+
+    /**
+     * Reveal crossword hint
+     * @param {number} attemptId 
+     * @param {Object} data - { type: 'letter'|'word', clue_key: '1-across', ... }
+     */
+    revealHint: async (attemptId, data) => {
+        const response = await api.post(`/games/attempts/${attemptId}/reveal_hint/`, data);
+        return response.data;
+    },
+
+    /**
      * Get game results
      * @param {number} attemptId - Attempt ID
      */
