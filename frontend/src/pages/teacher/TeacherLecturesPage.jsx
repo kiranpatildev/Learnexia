@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Search,
     Eye,
@@ -21,8 +21,17 @@ import api from '../../services/api';
 
 export function TeacherLecturesPage() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [lectures, setLectures] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (location.state?.openCreate) {
+            setIsWizardOpen(true);
+            // Clear state so it doesn't reopen recursively or on refresh if state persists
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location]);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState('date');
     const [viewMode, setViewMode] = useState('grid');

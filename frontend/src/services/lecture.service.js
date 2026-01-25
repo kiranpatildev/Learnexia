@@ -12,7 +12,9 @@ export const lectureService = {
     },
 
     async createLecture(data) {
-        const response = await api.post('/lectures/lectures/', data);
+        const isFormData = data instanceof FormData;
+        const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+        const response = await api.post('/lectures/lectures/', data, config);
         return response.data;
     },
 

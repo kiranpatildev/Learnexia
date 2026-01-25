@@ -15,6 +15,7 @@ import { QuizTakePage } from './pages/student/QuizTakePage';
 import { StudentAssignmentsPage } from './pages/student/StudentAssignmentsPage';
 import { StudentAttendancePage } from './pages/student/StudentAttendancePage';
 import { StudentLeaderboardPage } from './pages/student/StudentLeaderboardPage';
+import { StudentMessagesPage } from './pages/student/StudentMessagesPage';
 import { StudentProfilePage } from './pages/student/StudentProfilePage';
 import { StudentBehaviorPage } from './pages/student/StudentBehaviorPage';
 import { TeacherDashboard } from './pages/teacher/TeacherDashboard';
@@ -97,6 +98,7 @@ function App() {
             <Route path="leaderboard" element={<StudentLeaderboardPage />} />
             <Route path="behavior" element={<StudentBehaviorPage />} />
             <Route path="games" element={<StudentGamesPage />} />
+            <Route path="messages" element={<StudentMessagesPage />} />
             <Route path="profile" element={<StudentProfilePage />} />
           </Route>
 

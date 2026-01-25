@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, Send, MoreVertical, Plus, GraduationCap, Users, User } from 'lucide-react';
+import { Search, Send, MoreVertical, Plus } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import communicationService from '../../services/communication.service';
 import { useAuthStore } from '../../store/authStore';
 
-export function MessagesPage() {
+export function StudentMessagesPage() {
     const { user } = useAuthStore();
     const [conversations, setConversations] = useState([]);
     const [selectedConversation, setSelectedConversation] = useState(null);
@@ -15,6 +15,12 @@ export function MessagesPage() {
     const [sending, setSending] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const messagesEndRef = useRef(null);
+
+    // State for New Chat Modal
+    const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+    const [availableTeachers, setAvailableTeachers] = useState([]);
+    const [teacherSearch, setTeacherSearch] = useState('');
+    const [startingChat, setStartingChat] = useState(false);
 
     // Poll for new messages every 30 seconds
     useEffect(() => {
@@ -33,6 +39,13 @@ export function MessagesPage() {
         }
     }, [selectedConversation]);
 
+    // Fetch teachers when modal opens
+    useEffect(() => {
+        if (isNewChatOpen && availableTeachers.length === 0) {
+            fetchTeachers();
+        }
+    }, [isNewChatOpen]);
+
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
@@ -49,16 +62,14 @@ export function MessagesPage() {
             // Transform data for UI
             const formatted = results.map(conv => {
                 let displayName = conv.title;
-                let displayRole = conv.conversation_type === 'group' ? 'Group' : 'Direct Message';
-
                 if (conv.participants_info) {
                     const other = conv.participants_info.find(p => p.id !== user?.id);
                     if (other) {
                         if (!displayName) displayName = other.name;
-                        if (other.role) displayRole = other.role.charAt(0).toUpperCase() + other.role.slice(1);
+                        // Display role? Teachers are always teachers in student view context usually
+                        // But we can show subject if available? Not available in user object easily.
                     }
                 } else if (!displayName && conv.participant_names) {
-                    // Fallback
                     const otherNames = conv.participant_names.filter(name => name !== user?.first_name + ' ' + user?.last_name && name !== user?.username);
                     displayName = otherNames.length > 0 ? otherNames.join(', ') : conv.participant_names.join(', ');
                 }
@@ -67,7 +78,7 @@ export function MessagesPage() {
                     id: conv.id,
                     participant: {
                         name: displayName || 'Unknown',
-                        role: displayRole,
+                        role: conv.conversation_type === 'group' ? 'Group' : 'Direct Message',
                         avatar: null
                     },
                     last_message: conv.last_message_preview?.text || 'No messages yet',
@@ -100,13 +111,20 @@ export function MessagesPage() {
                 is_mine: msg.sender === user?.id
             }));
 
-            // Reverse if backend returns newest first? Django defaults to created_at ASC usually for chat
-            // Serializer ordering is 'created_at', so oldest first.
             setMessages(formatted);
         } catch (error) {
             console.error('Error fetching messages:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchTeachers = async () => {
+        try {
+            const data = await communicationService.getAvailableTeachers();
+            setAvailableTeachers(data.results || data || []);
+        } catch (error) {
+            console.error('Error fetching teachers:', error);
         }
     };
 
@@ -132,7 +150,6 @@ export function MessagesPage() {
 
             const response = await communicationService.sendMessage(selectedConversation.id, msgContent);
 
-            // Replace optimistic message with real one
             setMessages(prev => prev.map(msg =>
                 msg.id === tempId ? {
                     id: response.id,
@@ -143,88 +160,40 @@ export function MessagesPage() {
                 } : msg
             ));
 
-            // Refresh conversation list to update preview
             fetchConversations();
 
         } catch (error) {
             console.error('Error sending message:', error);
-            // Revert on error (or show error state)
             setMessages(prev => prev.filter(msg => msg.id !== tempId));
             alert("Failed to send message. Please try again.");
-            setNewMessage(msgContent); // Restore text
+            setNewMessage(msgContent);
         } finally {
             setSending(false);
+        }
+    };
+
+    const handleStartChat = async (userId) => {
+        try {
+            setStartingChat(true);
+            const data = await communicationService.startConversation([userId]);
+            fetchConversations();
+            setIsNewChatOpen(false);
+        } catch (error) {
+            console.error('Error starting chat:', error);
+            alert("Failed to start conversation.");
+        } finally {
+            setStartingChat(false);
         }
     };
 
     const markAsRead = async (conversationId) => {
         try {
             await communicationService.markConversationRead(conversationId);
-            // Update local state to clear unread dot
             setConversations(prev => prev.map(c =>
                 c.id === conversationId ? { ...c, unread: false, unread_count: 0 } : c
             ));
         } catch (error) {
             console.error('Error marking as read:', error);
-        }
-    };
-
-    // State for New Chat Modal
-    const [isNewChatOpen, setIsNewChatOpen] = useState(false);
-    const [availableRecipients, setAvailableRecipients] = useState([]);
-    const [recipientSearch, setRecipientSearch] = useState('');
-    const [activeTab, setActiveTab] = useState('all');
-    const [startingChat, setStartingChat] = useState(false);
-
-    // Fetch recipients (students & parents) when modal opens
-    useEffect(() => {
-        if (isNewChatOpen && availableRecipients.length === 0) {
-            fetchRecipients();
-        }
-    }, [isNewChatOpen]);
-
-    const fetchRecipients = async () => {
-        try {
-            const [studentsData, parentsData] = await Promise.all([
-                communicationService.getAvailableStudents(),
-                communicationService.getAvailableParents()
-            ]);
-
-            const students = (studentsData.results || studentsData || []).map(s => ({ ...s, type: 'Student' }));
-            const parents = (parentsData.results || parentsData || []).map(p => ({ ...p, type: 'Parent' }));
-
-            setAvailableRecipients([...students, ...parents]);
-        } catch (error) {
-            console.error('Error fetching recipients:', error);
-        }
-    };
-
-    const handleStartChat = async (studentId) => {
-        try {
-            setStartingChat(true);
-            const data = await communicationService.startConversation([studentId]);
-            // data matches conversation format? need to format it or reload list
-            fetchConversations();
-
-            // Wait for fetch then select? or optimistically select
-            // Ideally we get the ID and select it
-            // Backend "start" returns ConversationSerializer data
-
-            // Close modal
-            setIsNewChatOpen(false);
-
-            // We need to wait for fetchConversations to update state before selecting
-            // Or we force it
-            // Simple hack: reload list then auto-select if I find it by ID
-            // Or simpler: Just close and let user find it (or filter sets it at top)
-            // But let's try to select it
-            // For now, simple close + reload
-
-        } catch (error) {
-            console.error('Error starting chat:', error);
-            alert("Failed to start conversation.");
-        } finally {
-            setStartingChat(false);
         }
     };
 
@@ -244,15 +213,13 @@ export function MessagesPage() {
         return name.substring(0, 2).toUpperCase();
     };
 
-    const filteredRecipients = availableRecipients.filter(r => {
-        const matchesSearch = r.user?.full_name?.toLowerCase().includes(recipientSearch.toLowerCase()) ||
-            r.user?.email?.toLowerCase().includes(recipientSearch.toLowerCase());
-        const matchesTab = activeTab === 'all' || r.type.toLowerCase() === activeTab;
-        return matchesSearch && matchesTab;
-    });
-
     const filteredConversations = conversations.filter(conv =>
         conv.participant?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const filteredTeachers = availableTeachers.filter(t =>
+        t.user?.full_name?.toLowerCase().includes(teacherSearch.toLowerCase()) ||
+        t.user?.email?.toLowerCase().includes(teacherSearch.toLowerCase())
     );
 
     return (
@@ -263,7 +230,7 @@ export function MessagesPage() {
                 <div className="p-6 border-b border-gray-200 flex justify-between items-center">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 mb-1">Messages</h1>
-                        <p className="text-sm text-gray-600">Recent conversations</p>
+                        <p className="text-sm text-gray-600">Your conversations</p>
                     </div>
                     <Button
                         variant="ghost"
@@ -301,7 +268,7 @@ export function MessagesPage() {
                                 onClick={() => setIsNewChatOpen(true)}
                                 className="text-blue-600 font-semibold mt-2 hover:underline"
                             >
-                                Start a new one
+                                Message a Teacher
                             </button>
                         </div>
                     ) : (
@@ -315,33 +282,22 @@ export function MessagesPage() {
                                     }`}
                             >
                                 <div className="flex items-start gap-3">
-                                    {/* Avatar */}
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${conversation.participant?.role === 'Parent' ? 'bg-purple-100 text-purple-700' :
-                                        conversation.participant?.role === 'Student' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                                        }`}>
-                                        <span className="text-sm font-bold">
+                                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                        <span className="text-sm font-bold text-blue-700">
                                             {getInitials(conversation.participant?.name)}
                                         </span>
                                     </div>
-
-                                    {/* Content */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between mb-1">
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-1.5">
-                                                    <p className="font-semibold text-gray-900 truncate">
-                                                        {conversation.participant?.name}
-                                                    </p>
-                                                    {conversation.participant?.role === 'Parent' && <Users className="w-3.5 h-3.5 text-purple-600" />}
-                                                    {conversation.participant?.role === 'Student' && <GraduationCap className="w-3.5 h-3.5 text-blue-600" />}
-                                                </div>
-                                                <span className={`inline-block mt-0.5 text-[10px] px-1.5 py-0.5 rounded-full ${conversation.participant?.role === 'Parent' ? 'bg-purple-100 text-purple-700' :
-                                                    conversation.participant?.role === 'Student' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                                                    }`}>
+                                            <div>
+                                                <p className="font-semibold text-gray-900 truncate">
+                                                    {conversation.participant?.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
                                                     {conversation.participant?.role}
-                                                </span>
+                                                </p>
                                             </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                            <div className="flex items-center gap-2">
                                                 <span className="text-xs text-gray-500 whitespace-nowrap">
                                                     {conversation.last_message_time}
                                                 </span>
@@ -368,21 +324,15 @@ export function MessagesPage() {
                         {/* Chat Header */}
                         <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between shadow-sm z-10">
                             <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedConversation.participant?.role === 'Parent' ? 'bg-purple-100 text-purple-700' :
-                                    selectedConversation.participant?.role === 'Student' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                                    }`}>
-                                    <span className="text-sm font-bold">
+                                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <span className="text-sm font-bold text-blue-700">
                                         {getInitials(selectedConversation.participant?.name)}
                                     </span>
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-gray-900">
-                                            {selectedConversation.participant?.name}
-                                        </p>
-                                        {selectedConversation.participant?.role === 'Parent' && <Users className="w-4 h-4 text-purple-600" />}
-                                        {selectedConversation.participant?.role === 'Student' && <GraduationCap className="w-4 h-4 text-blue-600" />}
-                                    </div>
+                                    <p className="font-semibold text-gray-900">
+                                        {selectedConversation.participant?.name}
+                                    </p>
                                     <p className="text-xs text-gray-500">
                                         {selectedConversation.participant?.role}
                                     </p>
@@ -456,7 +406,7 @@ export function MessagesPage() {
                             </div>
                             <h3 className="text-xl font-bold text-gray-900 mb-2">Select a conversation</h3>
                             <p className="text-gray-500 max-w-sm mx-auto mb-4">
-                                Choose a conversation from the list or start a new one to verify that messages are delivered correctly to students and parents.
+                                Choose a conversation from the list or start a new one to ask your teachers for help.
                             </p>
                             <Button
                                 onClick={() => setIsNewChatOpen(true)}
@@ -474,7 +424,7 @@ export function MessagesPage() {
                 <div className="absolute inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]">
                         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                            <h3 className="text-lg font-bold">New Message</h3>
+                            <h3 className="text-lg font-bold">New Message to Teacher</h3>
                             <button
                                 onClick={() => setIsNewChatOpen(false)}
                                 className="text-gray-500 hover:text-gray-700"
@@ -483,63 +433,35 @@ export function MessagesPage() {
                             </button>
                         </div>
 
-                        <div className="flex border-b border-gray-100">
-                            <button
-                                className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                onClick={() => setActiveTab('all')}
-                            >
-                                All
-                            </button>
-                            <button
-                                className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'student' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                onClick={() => setActiveTab('student')}
-                            >
-                                Students
-                            </button>
-                            <button
-                                className={`flex-1 py-3 text-sm font-medium transition-colors ${activeTab === 'parent' ? 'text-purple-600 border-b-2 border-purple-600' : 'text-gray-500 hover:text-gray-700'}`}
-                                onClick={() => setActiveTab('parent')}
-                            >
-                                Parents
-                            </button>
-                        </div>
-
                         <div className="p-4 border-b border-gray-200">
                             <input
                                 autoFocus
                                 type="text"
-                                placeholder={`Search ${activeTab === 'all' ? 'students or parents' : activeTab + 's'}...`}
-                                value={recipientSearch}
-                                onChange={(e) => setRecipientSearch(e.target.value)}
+                                placeholder="Search teachers..."
+                                value={teacherSearch}
+                                onChange={(e) => setTeacherSearch(e.target.value)}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-2">
-                            {filteredRecipients.length === 0 ? (
+                            {filteredTeachers.length === 0 ? (
                                 <div className="text-center py-8 text-gray-500">
-                                    No recipients found
+                                    No teachers found
                                 </div>
                             ) : (
-                                filteredRecipients.map(recipient => (
+                                filteredTeachers.map(teacher => (
                                     <div
-                                        key={`${recipient.type}-${recipient.id}`}
-                                        onClick={() => handleStartChat(recipient.user.id)}
+                                        key={teacher.id}
+                                        onClick={() => handleStartChat(teacher.user.id)}
                                         className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                                     >
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${recipient.type === 'Parent' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                                            }`}>
-                                            {getInitials(recipient.user?.full_name)}
+                                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold">
+                                            {getInitials(teacher.user?.full_name)}
                                         </div>
                                         <div>
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-semibold text-gray-900">{recipient.user?.full_name}</p>
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${recipient.type === 'Parent' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                                                    }`}>
-                                                    {recipient.type}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-gray-500">{recipient.user?.email}</p>
+                                            <p className="font-semibold text-gray-900">{teacher.user?.full_name}</p>
+                                            <p className="text-xs text-gray-500">{teacher.user?.email}</p>
                                         </div>
                                         {startingChat && <div className="ml-auto animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>}
                                     </div>

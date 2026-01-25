@@ -10,6 +10,7 @@ from .models import Conversation, Message, MessageAttachment, MessageRead, Annou
 class ConversationSerializer(serializers.ModelSerializer):
     """Serializer for conversations"""
     participant_names = serializers.SerializerMethodField()
+    participants_info = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
     last_message_preview = serializers.SerializerMethodField()
     
@@ -20,6 +21,17 @@ class ConversationSerializer(serializers.ModelSerializer):
     
     def get_participant_names(self, obj):
         return [p.get_full_name() for p in obj.participants.all()]
+
+    def get_participants_info(self, obj):
+        return [
+            {
+                'id': p.id,
+                'name': p.get_full_name(),
+                'role': p.role,
+                'email': p.email
+            }
+            for p in obj.participants.all()
+        ]
     
     def get_unread_count(self, obj):
         request = self.context.get('request')

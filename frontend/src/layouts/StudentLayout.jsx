@@ -11,7 +11,8 @@ import {
     Trophy,
     AlertCircle,
     User,
-    Gamepad2
+    Gamepad2,
+    MessageSquare
 } from 'lucide-react';
 
 
@@ -24,6 +25,7 @@ const studentNavItems = [
     { label: 'Attendance', path: '/student/attendance', icon: Calendar },
     { label: 'Leaderboard', path: '/student/leaderboard', icon: Trophy },
     { label: 'Games', path: '/student/games', icon: Gamepad2 },
+    { label: 'Messages', path: '/student/messages', icon: MessageSquare },
     { label: 'Behavior', path: '/student/behavior', icon: AlertCircle },
     { label: 'Profile', path: '/student/profile', icon: User },
 ];

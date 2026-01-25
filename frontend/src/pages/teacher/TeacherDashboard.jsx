@@ -90,7 +90,7 @@ export function TeacherDashboard() {
                     </div>
                     <Button
                         className="nature-btn flex items-center gap-2"
-                        onClick={() => navigate('/teacher/lectures/create')}
+                        onClick={() => navigate('/teacher/lectures', { state: { openCreate: true } })}
                     >
                         <span className="text-xl">+</span>
                         Create Lecture
@@ -154,7 +154,7 @@ export function TeacherDashboard() {
                             </p>
                             <Button
                                 className="nature-btn"
-                                onClick={() => navigate('/teacher/lectures/create')}
+                                onClick={() => navigate('/teacher/lectures', { state: { openCreate: true } })}
                             >
                                 Create Lecture
                             </Button>
