@@ -98,6 +98,7 @@ class Classroom(TimeStampedModel, SoftDeleteModel):
         unique_together = ['school', 'academic_year', 'subject', 'grade', 'section']
         verbose_name = 'Classroom'
         verbose_name_plural = 'Classrooms'
+        ordering = ['grade', 'section']  # Fix pagination warning
         indexes = [
             models.Index(fields=['school', 'academic_year', 'teacher']),
         ]

@@ -15,9 +15,9 @@ import { QuizTakePage } from './pages/student/QuizTakePage';
 import { StudentAssignmentsPage } from './pages/student/StudentAssignmentsPage';
 import { StudentAttendancePage } from './pages/student/StudentAttendancePage';
 import { StudentLeaderboardPage } from './pages/student/StudentLeaderboardPage';
-import { StudentMessagesPage } from './pages/student/StudentMessagesPage';
+import StudentBehaviorMessagesPage from './pages/student/StudentBehaviorMessagesPage';
 import { StudentProfilePage } from './pages/student/StudentProfilePage';
-import { StudentBehaviorPage } from './pages/student/StudentBehaviorPage';
+import { StudyToolsPage } from './pages/student/StudyToolsPage';
 import { TeacherDashboard } from './pages/teacher/TeacherDashboard';
 import { AIFeaturesPage } from './pages/teacher/AIFeaturesPage';
 import { TeacherLecturesPage } from './pages/teacher/TeacherLecturesPage';
@@ -89,6 +89,7 @@ function App() {
             <Route path="lectures/:id" element={<StudentLectureDetail />} />
             <Route path="notes" element={<StudentNotesPage />} />
             <Route path="notes/:noteId" element={<NoteViewerPage />} />
+            <Route path="study-tools" element={<StudyToolsPage />} />
             <Route path="flashcards" element={<StudentFlashcardsPage />} />
             <Route path="flashcards/:setId/study" element={<FlashcardStudyPage />} />
             <Route path="quizzes" element={<StudentQuizzesPage />} />
@@ -96,9 +97,9 @@ function App() {
             <Route path="assignments" element={<StudentAssignmentsPage />} />
             <Route path="attendance" element={<StudentAttendancePage />} />
             <Route path="leaderboard" element={<StudentLeaderboardPage />} />
-            <Route path="behavior" element={<StudentBehaviorPage />} />
+            <Route path="behavior" element={<StudentBehaviorMessagesPage />} />
             <Route path="games" element={<StudentGamesPage />} />
-            <Route path="messages" element={<StudentMessagesPage />} />
+            <Route path="messages" element={<StudentBehaviorMessagesPage />} />
             <Route path="profile" element={<StudentProfilePage />} />
           </Route>
 

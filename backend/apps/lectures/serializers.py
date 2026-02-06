@@ -137,7 +137,7 @@ class LectureListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'chapter', 'topic', 'duration', 'status',
             'is_shared_with_students', 'teacher_name', 'view_count',
-            'student_completion', 'created_at', 'scheduled_date'
+            'student_completion', 'created_at', 'scheduled_date', 'transcript'
         ]
         read_only_fields = fields
     

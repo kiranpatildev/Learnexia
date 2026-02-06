@@ -43,6 +43,7 @@ class ClassroomSerializer(serializers.ModelSerializer):
     """
     Classroom serializer
     """
+    name = serializers.CharField(source='__str__', read_only=True)  # For dropdown display
     teacher_name = serializers.CharField(source='teacher.get_full_name', read_only=True)
     subject_name = serializers.CharField(source='subject.name', read_only=True)
     school_name = serializers.CharField(source='school.name', read_only=True)
