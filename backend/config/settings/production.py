@@ -4,10 +4,26 @@ Production settings
 
 from .base import *
 from decouple import config
+import dj_database_url
 
-DEBUG = False
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=lambda v: [s.strip() for s in v.split(',')])
+
+# Database - Use DATABASE_URL for Supabase/Railway
+DATABASES = {
+    "default": dj_database_url.config(
+        default=config("DATABASE_URL"),
+        conn_max_age=600,
+        ssl_require=True,
+    )
+}
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="http://localhost:3000"
+).split(",")
 
 # Security Settings
 SECURE_SSL_REDIRECT = True

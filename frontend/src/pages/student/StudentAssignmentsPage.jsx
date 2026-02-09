@@ -523,19 +523,19 @@ function SubmissionForm({ assignment, existingSubmission, onClose, onSubmitted }
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="w-full max-w-3xl max-h-[90vh] overflow-hidden"
             >
-                <Card className="glass-card border-0 shadow-2xl">
+                <Card className="bg-white border border-slate-200 shadow-2xl">
                     <CardContent className="p-0">
                         {/* Header */}
-                        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+                        <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-[#2D7FF9]/5 to-[#3498DB]/5">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <div className="flex items-center gap-3 mb-1">
-                                        <h2 className="text-2xl font-bold text-gray-900">{assignment.title}</h2>
-                                        <Badge variant={assignment.submission_type === 'online' ? 'secondary' : 'default'} className={assignment.submission_type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}>
+                                        <h2 className="text-2xl font-bold text-[#2C3E50]">{assignment.title}</h2>
+                                        <Badge variant={assignment.submission_type === 'online' ? 'secondary' : 'default'} className={assignment.submission_type === 'online' ? 'bg-[#2D7FF9]/10 text-[#2D7FF9]' : 'bg-[#8B5CF6]/10 text-[#8B5CF6]'}>
                                             {assignment.submission_type === 'online' ? 'Online Submission' : 'Offline Submission'}
                                         </Badge>
                                     </div>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-sm text-[#6C757D]">
                                         Due: {new Date(assignment.due_date).toLocaleString()}
                                     </p>
                                 </div>
@@ -543,7 +543,7 @@ function SubmissionForm({ assignment, existingSubmission, onClose, onSubmitted }
                                     variant="ghost"
                                     size="icon"
                                     onClick={onClose}
-                                    className="text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                                    className="text-[#6C757D] hover:text-[#2C3E50] hover:bg-slate-100"
                                 >
                                     <X className="w-5 h-5" />
                                 </Button>
@@ -551,18 +551,18 @@ function SubmissionForm({ assignment, existingSubmission, onClose, onSubmitted }
                         </div>
 
                         {/* Content */}
-                        <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar space-y-6">
+                        <div className="p-6 max-h-[60vh] overflow-y-auto scrollbar-custom space-y-6 bg-white">
                             {assignment.submission_type === 'online' ? (
                                 <>
                                     {/* Submission Method Toggle */}
                                     <div className="mb-8">
-                                        <p className="text-sm font-medium text-gray-700 mb-3">How do you want to submit?</p>
+                                        <p className="text-sm font-medium text-[#2C3E50] mb-3">How do you want to submit?</p>
                                         <div className="grid grid-cols-2 gap-4">
                                             <button
                                                 onClick={() => setSubmissionMethod('text')}
-                                                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${submissionMethod === 'text' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300 text-gray-600'}`}
+                                                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${submissionMethod === 'text' ? 'border-[#2D7FF9] bg-[#2D7FF9]/5 text-[#2D7FF9]' : 'border-slate-200 hover:border-slate-300 text-[#6C757D]'}`}
                                             >
-                                                <div className={`p-2 rounded-full ${submissionMethod === 'text' ? 'bg-blue-200' : 'bg-gray-100'}`}>
+                                                <div className={`p-2 rounded-full ${submissionMethod === 'text' ? 'bg-[#2D7FF9]/10' : 'bg-slate-100'}`}>
                                                     <FileText className="w-5 h-5" />
                                                 </div>
                                                 <span className="font-medium">Type Answers</span>
@@ -570,9 +570,9 @@ function SubmissionForm({ assignment, existingSubmission, onClose, onSubmitted }
 
                                             <button
                                                 onClick={() => setSubmissionMethod('pdf')}
-                                                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${submissionMethod === 'pdf' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-gray-300 text-gray-600'}`}
+                                                className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${submissionMethod === 'pdf' ? 'border-[#2D7FF9] bg-[#2D7FF9]/5 text-[#2D7FF9]' : 'border-slate-200 hover:border-slate-300 text-[#6C757D]'}`}
                                             >
-                                                <div className={`p-2 rounded-full ${submissionMethod === 'pdf' ? 'bg-blue-200' : 'bg-gray-100'}`}>
+                                                <div className={`p-2 rounded-full ${submissionMethod === 'pdf' ? 'bg-[#2D7FF9]/10' : 'bg-slate-100'}`}>
                                                     <Upload className="w-5 h-5" />
                                                 </div>
                                                 <span className="font-medium">Upload PDF</span>
@@ -582,21 +582,21 @@ function SubmissionForm({ assignment, existingSubmission, onClose, onSubmitted }
 
                                     {submissionMethod === 'text' ? (
                                         <div>
-                                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Questions</h3>
+                                            <h3 className="text-lg font-semibold text-[#2C3E50] mb-4">Questions</h3>
                                             <div className="space-y-4">
                                                 {assignment.questions?.map((question) => (
-                                                    <div key={question.id} className="p-4 rounded-xl bg-gray-50 border border-gray-200">
+                                                    <div key={question.id} className="p-4 rounded-xl bg-slate-50 border border-slate-200">
                                                         <div className="flex items-start justify-between mb-3">
-                                                            <Badge variant="secondary">Q{question.question_number}</Badge>
-                                                            <span className="text-sm text-gray-600">{question.marks} marks</span>
+                                                            <Badge variant="secondary" className="bg-[#2D7FF9]/10 text-[#2D7FF9]">Q{question.question_number}</Badge>
+                                                            <span className="text-sm text-[#6C757D]">{question.marks} marks</span>
                                                         </div>
-                                                        <p className="text-gray-900 mb-3 font-medium">{question.question_text}</p>
+                                                        <p className="text-[#2C3E50] mb-3 font-medium">{question.question_text}</p>
                                                         <textarea
                                                             value={answers[question.id] || ''}
                                                             onChange={(e) => handleAnswerChange(question.id, e.target.value)}
                                                             placeholder="Type your answer here..."
                                                             rows={4}
-                                                            className="w-full px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-[#2C3E50] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#2D7FF9] focus:border-[#2D7FF9]"
                                                         />
                                                     </div>
                                                 ))}
@@ -605,7 +605,7 @@ function SubmissionForm({ assignment, existingSubmission, onClose, onSubmitted }
                                     ) : (
                                         <div className="space-y-6">
                                             {/* Reuse PDF Upload UI Logic */}
-                                            <div className="p-8 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center hover:border-blue-400 transition-colors bg-gray-50/50">
+                                            <div className="p-8 border-2 border-dashed border-slate-300 rounded-2xl flex flex-col items-center justify-center text-center hover:border-[#2D7FF9] transition-colors bg-slate-50">
                                                 <input
                                                     type="file"
                                                     accept="application/pdf"
@@ -614,37 +614,37 @@ function SubmissionForm({ assignment, existingSubmission, onClose, onSubmitted }
                                                     id="pdf-upload-online"
                                                 />
                                                 <label htmlFor="pdf-upload-online" className="cursor-pointer w-full flex flex-col items-center">
-                                                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                                                    <div className="w-16 h-16 bg-[#2D7FF9]/10 text-[#2D7FF9] rounded-full flex items-center justify-center mb-4">
                                                         <Upload className="w-8 h-8" />
                                                     </div>
-                                                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload Assignment PDF</h3>
-                                                    <p className="text-gray-500 mb-6 max-w-sm">
+                                                    <h3 className="text-lg font-semibold text-[#2C3E50] mb-2">Upload Assignment PDF</h3>
+                                                    <p className="text-[#6C757D] mb-6 max-w-sm">
                                                         Drag and drop your PDF file here, or click to browse.
                                                         <br />
                                                         <span className="text-xs">Max size: 5MB</span>
                                                     </p>
-                                                    <Button variant="outline" className="gap-2">
+                                                    <Button variant="outline" className="gap-2 border-slate-300 text-[#2C3E50] hover:bg-slate-100">
                                                         Select PDF File
                                                     </Button>
                                                 </label>
                                             </div>
 
                                             {pdfFile && (
-                                                <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                                                <div className="flex items-center justify-between p-4 bg-[#2D7FF9]/5 border border-[#2D7FF9]/20 rounded-xl">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-white rounded-lg border border-blue-100">
-                                                            <FileText className="w-6 h-6 text-blue-600" />
+                                                        <div className="p-2 bg-white rounded-lg border border-[#2D7FF9]/20">
+                                                            <FileText className="w-6 h-6 text-[#2D7FF9]" />
                                                         </div>
                                                         <div>
-                                                            <p className="font-medium text-gray-900">{pdfFile.name}</p>
-                                                            <p className="text-xs text-gray-500">{(pdfFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                                                            <p className="font-medium text-[#2C3E50]">{pdfFile.name}</p>
+                                                            <p className="text-xs text-[#6C757D]">{(pdfFile.size / 1024 / 1024).toFixed(2)} MB</p>
                                                         </div>
                                                     </div>
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
                                                         onClick={() => setPdfFile(null)}
-                                                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                        className="text-[#E74C3C] hover:text-[#C0392B] hover:bg-[#E74C3C]/10"
                                                     >
                                                         <X className="w-5 h-5" />
                                                     </Button>
