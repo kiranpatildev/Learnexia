@@ -16,4 +16,44 @@
     .rotate-y-180 {
         transform: rotateY(180deg);
     }
+
+    /* Custom Scrollbar Styles - Professional & Minimal */
+    .scrollbar-custom {
+        /* Firefox */
+        scrollbar-width: thin;
+        scrollbar-color: transparent transparent;
+    }
+
+    .scrollbar-custom:hover {
+        scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    }
+
+    /* Webkit browsers (Chrome, Safari, Edge) */
+    .scrollbar-custom::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .scrollbar-custom::-webkit-scrollbar-track {
+        background: transparent;
+        border-radius: 3px;
+    }
+
+    .scrollbar-custom::-webkit-scrollbar-thumb {
+        background: transparent;
+        border-radius: 3px;
+        transition: background 0.2s ease;
+    }
+
+    .scrollbar-custom:hover::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Smooth scrolling */
+    .scrollbar-custom {
+        scroll-behavior: smooth;
+    }
 }

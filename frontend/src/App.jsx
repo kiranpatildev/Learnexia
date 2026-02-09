@@ -23,9 +23,7 @@ import { AIFeaturesPage } from './pages/teacher/AIFeaturesPage';
 import { TeacherLecturesPage } from './pages/teacher/TeacherLecturesPage';
 import { TeacherLectureDetailPage } from './pages/teacher/TeacherLectureDetailPage';
 import { TeacherAssignmentsPage } from './pages/teacher/TeacherAssignmentsPage';
-import { TeacherQuizzesPage } from './pages/teacher/TeacherQuizzesPage';
 import { TeacherStudentsPage } from './pages/teacher/TeacherStudentsPage';
-import { TeacherAnalyticsPage } from './pages/teacher/TeacherAnalyticsPage';
 import { BehaviorManagementPage } from './pages/teacher/BehaviorManagementPage';
 import { AIBehaviorReportPage } from './pages/teacher/AIBehaviorReportPage';
 import { AttendancePage } from './pages/teacher/AttendancePage';
@@ -127,7 +125,6 @@ function App() {
             <Route path="lectures/:id" element={<TeacherLectureDetailPage />} />
             <Route path="ai-features" element={<AIFeaturesPage />} />
             <Route path="assignments" element={<TeacherAssignmentsPage />} />
-            <Route path="quizzes" element={<TeacherQuizzesPage />} />
             <Route path="students" element={<TeacherStudentsPage />} />
             <Route path="attendance" element={<AttendancePage />} />
             <Route path="games" element={<TeacherGamesPage />} />
@@ -135,7 +132,6 @@ function App() {
             <Route path="behavior" element={<BehaviorManagementPage />} />
             <Route path="behavior/generate" element={<AIBehaviorReportPage />} />
             <Route path="messages" element={<MessagesPage />} />
-            <Route path="analytics" element={<TeacherAnalyticsPage />} />
             <Route path="profile" element={<TeacherProfilePage />} />
           </Route>
 

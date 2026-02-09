@@ -139,20 +139,20 @@ export function AIAssignmentWizard({ onClose, onSuccess }) {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="w-full max-w-5xl max-h-[90vh] overflow-hidden"
             >
-                <Card className="glass-card border-0 shadow-2xl">
+                <Card className="bg-white border border-slate-200 shadow-2xl">
                     <CardContent className="p-0">
                         {/* Header */}
-                        <div className="p-6 border-b border-white/10 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10">
+                        <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-[#2D7FF9]/5 via-[#8B5CF6]/5 to-[#EC4899]/5">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2D7FF9] to-[#8B5CF6] flex items-center justify-center">
                                         <Sparkles className="w-6 h-6 text-white" />
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-bold text-white">
+                                        <h2 className="text-2xl font-bold text-[#2C3E50]">
                                             AI Assignment Generator
                                         </h2>
-                                        <p className="text-sm text-white/70">
+                                        <p className="text-sm text-[#6C757D]">
                                             Create assignments from lectures in seconds
                                         </p>
                                     </div>
@@ -161,7 +161,7 @@ export function AIAssignmentWizard({ onClose, onSuccess }) {
                                     variant="ghost"
                                     size="icon"
                                     onClick={onClose}
-                                    className="text-white/70 hover:text-white hover:bg-white/10"
+                                    className="text-[#6C757D] hover:text-[#2C3E50] hover:bg-slate-100"
                                 >
                                     <X className="w-5 h-5" />
                                 </Button>
@@ -181,29 +181,29 @@ export function AIAssignmentWizard({ onClose, onSuccess }) {
                                                     animate={{
                                                         scale: isActive ? 1.1 : 1,
                                                         backgroundColor: isCompleted
-                                                            ? 'rgb(34, 197, 94)'
+                                                            ? '#4CAF50'
                                                             : isActive
-                                                                ? 'rgb(139, 92, 246)'
-                                                                : 'rgba(255, 255, 255, 0.1)'
+                                                                ? '#2D7FF9'
+                                                                : '#E5E7EB'
                                                     }}
                                                     className="w-10 h-10 rounded-full flex items-center justify-center"
                                                 >
                                                     {isCompleted ? (
                                                         <Check className="w-5 h-5 text-white" />
                                                     ) : (
-                                                        <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-white/50'}`} />
+                                                        <Icon className={`w-5 h-5 ${isActive ? 'text-white' : 'text-[#9CA3AF]'}`} />
                                                     )}
                                                 </motion.div>
                                                 <div className="hidden md:block">
-                                                    <p className={`text-sm font-medium ${isActive ? 'text-white' : 'text-white/50'}`}>
+                                                    <p className={`text-sm font-medium ${isActive ? 'text-[#2C3E50]' : 'text-[#9CA3AF]'}`}>
                                                         {step.name}
                                                     </p>
                                                 </div>
                                             </div>
                                             {index < STEPS.length - 1 && (
-                                                <div className="flex-1 h-0.5 mx-4 bg-white/10">
+                                                <div className="flex-1 h-0.5 mx-4 bg-slate-200">
                                                     <motion.div
-                                                        className="h-full bg-violet-500"
+                                                        className="h-full bg-[#2D7FF9]"
                                                         initial={{ width: 0 }}
                                                         animate={{ width: isCompleted ? '100%' : '0%' }}
                                                     />
@@ -216,7 +216,7 @@ export function AIAssignmentWizard({ onClose, onSuccess }) {
                         </div>
 
                         {/* Content */}
-                        <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                        <div className="p-6 max-h-[60vh] overflow-y-auto scrollbar-custom bg-white">
                             <AnimatePresence mode="wait">
                                 {currentStep === 1 && (
                                     <StepSelectLecture
@@ -277,21 +277,21 @@ function StepSelectLecture({ lectures, formData, setFormData, onNext }) {
             className="space-y-4"
         >
             <div>
-                <h3 className="text-lg font-semibold text-white mb-2">
+                <h3 className="text-lg font-semibold text-[#2C3E50] mb-2">
                     Select a Lecture with Transcript
                 </h3>
-                <p className="text-sm text-white/60">
+                <p className="text-sm text-[#6C757D]">
                     Choose the lecture you want to generate an assignment from
                 </p>
             </div>
 
             {lectures.length === 0 ? (
                 <div className="text-center py-12">
-                    <BookOpen className="w-16 h-16 text-white/20 mx-auto mb-4" />
-                    <p className="text-white/60">No lectures found</p>
+                    <BookOpen className="w-16 h-16 text-[#9CA3AF] mx-auto mb-4" />
+                    <p className="text-[#6C757D]">No lectures found</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto scrollbar-custom">
                     {lectures.map((lecture) => {
                         const hasTranscript = !!lecture.transcript;
                         return (
@@ -306,32 +306,32 @@ function StepSelectLecture({ lectures, formData, setFormData, onNext }) {
                                     }
                                 }}
                                 className={`p-4 rounded-xl transition-all ${!hasTranscript
-                                    ? 'opacity-50 cursor-not-allowed bg-white/5 border border-dashed border-white/10'
-                                    : formData.lecture_id === lecture.id
-                                        ? 'cursor-pointer bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 border-2 border-violet-500'
-                                        : 'cursor-pointer bg-white/5 border border-white/10 hover:bg-white/10'
+                                        ? 'opacity-50 cursor-not-allowed bg-slate-50 border border-dashed border-slate-300'
+                                        : formData.lecture_id === lecture.id
+                                            ? 'cursor-pointer bg-[#2D7FF9]/10 border-2 border-[#2D7FF9]'
+                                            : 'cursor-pointer bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
                                     }`}
                             >
                                 <div className="flex items-start justify-between">
                                     <div className="flex-1">
-                                        <h4 className="font-medium text-white">
+                                        <h4 className="font-medium text-[#2C3E50]">
                                             {lecture.title}
-                                            {!hasTranscript && <span className="ml-2 text-xs text-red-400 font-normal">(No transcript)</span>}
+                                            {!hasTranscript && <span className="ml-2 text-xs text-[#E74C3C] font-normal">(No transcript)</span>}
                                         </h4>
-                                        <p className="text-sm text-white/60 mt-1 line-clamp-2">
+                                        <p className="text-sm text-[#6C757D] mt-1 line-clamp-2">
                                             {lecture.description || 'No description'}
                                         </p>
                                         <div className="flex items-center gap-3 mt-2">
-                                            <Badge variant="secondary" className="text-xs">
+                                            <Badge variant="secondary" className="text-xs bg-slate-100 text-[#2C3E50]">
                                                 {lecture.subject?.name || 'General'}
                                             </Badge>
-                                            <span className="text-xs text-white/40">
+                                            <span className="text-xs text-[#9CA3AF]">
                                                 {lecture.transcript?.length || 0} chars
                                             </span>
                                         </div>
                                     </div>
                                     {formData.lecture_id === lecture.id && (
-                                        <Check className="w-5 h-5 text-violet-500" />
+                                        <Check className="w-5 h-5 text-[#2D7FF9]" />
                                     )}
                                 </div>
                             </motion.div>

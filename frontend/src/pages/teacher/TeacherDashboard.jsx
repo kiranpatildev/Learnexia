@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Users,
@@ -8,13 +8,111 @@ import {
     Calendar,
     CheckCircle,
     Sparkles,
-    Clock
+    Clock,
+    FileText,
+    TrendingUp,
+    ArrowRight
 } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { LeafTopRight, FlowerAccent, WatercolorBlob } from '../../components/nature/BotanicalElements';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
-import '../../styles/nature-theme.css';
+
+// ============================================
+// DESIGN SYSTEM COMPONENTS
+// ============================================
+
+const MetricCard = memo(({ icon: Icon, label, value, badge, badgeColor = 'blue' }) => {
+    const badgeColors = {
+        blue: 'bg-[#2D7FF9] text-white',
+        cyan: 'bg-[#00BCD4] text-white',
+        red: 'bg-[#E74C3C] text-white',
+        green: 'bg-[#4CAF50] text-white',
+        gray: 'bg-[#6C757D] text-white'
+    };
+
+    return (
+        <div className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-[#F5F7FA] flex items-center justify-center text-[#2C3E50]">
+                    <Icon size={24} strokeWidth={2} />
+                </div>
+                <div>
+                    <p className="text-sm text-[#6C757D] font-medium">{label}</p>
+                    <p className="text-2xl font-bold text-[#2C3E50] mt-1">{value}</p>
+                </div>
+            </div>
+            {badge !== undefined && (
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${badgeColors[badgeColor]}`}>
+                    {badge}
+                </div>
+            )}
+        </div>
+    );
+});
+
+const StatusBadge = memo(({ status, children }) => {
+    const statusColors = {
+        completed: 'bg-[#4CAF50] text-white',
+        published: 'bg-[#4CAF50] text-white',
+        pending: 'bg-[#FF9800] text-white',
+        draft: 'bg-[#6C757D] text-white',
+        'in-progress': 'bg-[#2D7FF9] text-white',
+        default: 'bg-[#6C757D] text-white'
+    };
+
+    return (
+        <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-[13px] font-semibold ${statusColors[status] || statusColors.default}`}>
+            {children}
+        </span>
+    );
+});
+
+const ListCard = memo(({ title, subtitle, status, onClick }) => (
+    <button
+        onClick={onClick}
+        className="w-full bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-4 flex items-center justify-between hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-shadow"
+    >
+        <div className="text-left">
+            <h3 className="text-base font-bold text-[#2C3E50]">{title}</h3>
+            <p className="text-sm text-[#6C757D] mt-1">{subtitle}</p>
+        </div>
+        {status && <StatusBadge status={status}>{status}</StatusBadge>}
+    </button>
+));
+
+const ActionButton = memo(({ icon: Icon, label, onClick, variant = 'primary' }) => {
+    const variants = {
+        primary: 'bg-[#2D7FF9] hover:bg-[#1E6FE8] text-white',
+        secondary: 'bg-white hover:bg-[#F5F7FA] text-[#2C3E50] border border-[#E0E0E0]'
+    };
+
+    return (
+        <button
+            onClick={onClick}
+            className={`w-full h-11 rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2 transition-colors ${variants[variant]}`}
+        >
+            {Icon && <Icon size={18} strokeWidth={2} />}
+            {label}
+        </button>
+    );
+});
+
+const SectionCard = memo(({ title, action, children }) => (
+    <div className="bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-6">
+        <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-[#2C3E50]">{title}</h2>
+            {action && (
+                <button className="text-[#2D7FF9] text-sm font-semibold hover:underline flex items-center gap-1">
+                    {action} <ArrowRight size={14} />
+                </button>
+            )}
+        </div>
+        {children}
+    </div>
+));
+
+// ============================================
+// MAIN DASHBOARD
+// ============================================
 
 export function TeacherDashboard() {
     const navigate = useNavigate();
@@ -28,28 +126,21 @@ export function TeacherDashboard() {
     const [lectures, setLectures] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, []);
-
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = useCallback(async () => {
         try {
             setLoading(true);
 
-            const lecturesRes = await api.get('/lectures/lectures/', {
-                params: { ordering: '-created_at', page_size: 5 }
-            });
+            const [lecturesRes, assignmentsRes, incidentsRes] = await Promise.all([
+                api.get('/lectures/lectures/', { params: { ordering: '-created_at', page_size: 5 } }).catch(() => ({ data: [] })),
+                api.get('/assignments/assignments/').catch(() => ({ data: [] })),
+                api.get('/behavior/incidents/', { params: { status: 'pending' } }).catch(() => ({ data: [] }))
+            ]);
+
             const lectureData = lecturesRes.data.results || lecturesRes.data || [];
-            setLectures(lectureData);
-
-            const assignmentsRes = await api.get('/assignments/assignments/');
             const assignments = assignmentsRes.data.results || assignmentsRes.data || [];
-
-            const incidentsRes = await api.get('/behavior/incidents/', {
-                params: { status: 'pending' }
-            });
             const incidents = incidentsRes.data.results || incidentsRes.data || [];
 
+            setLectures(lectureData);
             setStats({
                 todayAttendance: 0,
                 pendingGrading: assignments.length,
@@ -61,181 +152,162 @@ export function TeacherDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, [fetchDashboardData]);
+
+    const handleNavigation = useCallback((path) => {
+        navigate(path);
+    }, [navigate]);
+
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <div className="animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-32 bg-gray-200 rounded-lg animate-pulse"></div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen nature-bg relative overflow-hidden">
-
-            {/* Watercolor Blob Decorations */}
-            <WatercolorBlob
-                color="#D4896B"
-                size={300}
-                opacity={0.08}
-                className="watercolor-blob-1"
-            />
-            <WatercolorBlob
-                color="#A8B89F"
-                size={250}
-                opacity={0.06}
-                className="watercolor-blob-2"
-            />
-
-            {/* Main Content */}
-            <div className="relative z-10 p-6 space-y-6">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-2">
-                    <div>
-                        <h1 className="text-3xl font-bold text-[#4A4A4A] mb-1">Lectures</h1>
-                        <p className="text-[#7A7A7A]">Manage your lecture recordings and transcripts</p>
-                    </div>
-                    <Button
-                        className="nature-btn flex items-center gap-2"
-                        onClick={() => navigate('/teacher/lectures', { state: { openCreate: true } })}
-                    >
-                        <span className="text-xl">+</span>
-                        Create Lecture
-                    </Button>
+        <div className="space-y-6">
+            {/* Page Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-[#2C3E50]">Teacher Dashboard</h1>
+                    <p className="text-sm text-[#6C757D] mt-1">
+                        Manage your classes and track student progress
+                    </p>
                 </div>
+                <ActionButton
+                    icon={Sparkles}
+                    label="AI Features"
+                    onClick={() => handleNavigation('/teacher/ai-features')}
+                    variant="primary"
+                />
+            </div>
 
-                {/* Stats Card */}
-                <div className="nature-card p-6 relative">
-                    <div className="absolute top-0 right-0 opacity-30">
-                        <LeafTopRight />
-                    </div>
-                    <div className="flex items-center gap-3 relative z-10">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4896B] to-[#E8B4A0] flex items-center justify-center">
-                            <BookOpen className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-[#7A7A7A]">Total Lectures</p>
-                            <h3 className="text-3xl font-bold text-[#4A4A4A]">{stats.lecturesThisWeek}</h3>
-                        </div>
-                    </div>
-                </div>
+            {/* Metrics Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <MetricCard
+                    icon={BookOpen}
+                    label="Lectures This Week"
+                    value={stats.lecturesThisWeek}
+                    badge={stats.lecturesThisWeek}
+                    badgeColor="blue"
+                />
+                <MetricCard
+                    icon={Calendar}
+                    label="Today's Attendance"
+                    value={`${stats.todayAttendance}`}
+                    badge={stats.todayAttendance}
+                    badgeColor="cyan"
+                />
+                <MetricCard
+                    icon={ClipboardCheck}
+                    label="Pending Grading"
+                    value={stats.pendingGrading}
+                    badge={stats.pendingGrading}
+                    badgeColor="red"
+                />
+                <MetricCard
+                    icon={AlertCircle}
+                    label="Student Alerts"
+                    value={stats.studentAlerts}
+                    badge={stats.studentAlerts}
+                    badgeColor="gray"
+                />
+            </div>
 
-                {/* Search and Filters */}
-                <div className="flex items-center gap-4">
-                    <div className="flex-1 relative">
-                        <input
-                            type="text"
-                            placeholder="Search lectures..."
-                            className="nature-search pl-10"
-                        />
-                        <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#7A7A7A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </div>
-                    <select className="nature-search w-48">
-                        <option>Sort by Date</option>
-                        <option>Sort by Name</option>
-                    </select>
-                    <button className="p-3 nature-card hover:shadow-lg transition-all">
-                        <svg className="w-5 h-5 text-[#4A4A4A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                    <button className="p-3 nature-card hover:shadow-lg transition-all">
-                        <svg className="w-5 h-5 text-[#4A4A4A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                        </svg>
-                    </button>
-                </div>
-
-                {/* Lectures Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {loading ? (
-                        <div className="col-span-full text-center py-12 text-[#7A7A7A]">Loading...</div>
-                    ) : lectures.length === 0 ? (
-                        <div className="col-span-full text-center py-12">
-                            <BookOpen className="w-16 h-16 text-[#D4896B] mx-auto mb-4 opacity-50" />
-                            <h3 className="text-lg font-medium text-[#4A4A4A] mb-2">No lectures yet</h3>
-                            <p className="text-sm text-[#7A7A7A] mb-4">
-                                Create your first lecture to get started
-                            </p>
-                            <Button
-                                className="nature-btn"
-                                onClick={() => navigate('/teacher/lectures', { state: { openCreate: true } })}
-                            >
-                                Create Lecture
-                            </Button>
-                        </div>
-                    ) : (
-                        lectures.map((lecture) => (
-                            <div
-                                key={lecture.id}
-                                className="nature-card p-6 cursor-pointer group relative overflow-visible"
-                                onClick={() => navigate(`/teacher/lectures/${lecture.id}`)}
-                            >
-                                {/* Flower Decoration */}
-                                <div className="absolute -bottom-3 -right-3 opacity-0 group-hover:opacity-60 transition-opacity duration-300">
-                                    <FlowerAccent />
-                                </div>
-
-                                {/* Card Content */}
-                                <div className="relative z-10">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#8FB569] to-[#A8B89F] flex items-center justify-center flex-shrink-0">
-                                            <BookOpen className="w-6 h-6 text-white" />
-                                        </div>
-                                        <span className={`nature-badge ${lecture.status === 'published' ? 'nature-badge-success' : 'nature-badge-primary'}`}>
-                                            {lecture.status}
-                                        </span>
-                                    </div>
-
-                                    <h3 className="font-semibold text-[#4A4A4A] mb-2 group-hover:text-[#D4896B] transition-colors">
-                                        {lecture.title}
-                                    </h3>
-                                    <p className="text-sm text-[#7A7A7A] mb-4">
-                                        {lecture.chapter || 'General'} • {lecture.topic || 'No topic'}
-                                    </p>
-
-                                    <div className="flex items-center justify-between text-xs text-[#7A7A7A]">
-                                        <span className="flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
-                                            {new Date(lecture.created_at).toLocaleDateString('en-US', {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric'
-                                            })}
-                                        </span>
-                                        <span>2700 min</span>
-                                    </div>
-
-                                    {/* Action Buttons */}
-                                    <div className="mt-4 pt-4 border-t border-[#D4896B]/10">
-                                        <div className="flex items-center gap-2 text-xs">
-                                            <span className="text-[#7A7A7A]">Generate Resources:</span>
-                                        </div>
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <button className="flex-1 py-2 px-3 rounded-lg bg-white border border-[#D4896B]/20 text-[#4A4A4A] hover:bg-[#F9F5F0] transition-colors text-xs font-medium flex items-center justify-center gap-1">
-                                                <BookOpen className="w-3 h-3" />
-                                                Notes
-                                            </button>
-                                            <button className="flex-1 py-2 px-3 rounded-lg bg-white border border-[#D4896B]/20 text-[#4A4A4A] hover:bg-[#F9F5F0] transition-colors text-xs font-medium flex items-center justify-center gap-1">
-                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                                </svg>
-                                                Flashcards
-                                            </button>
-                                            <button className="flex-1 py-2 px-3 rounded-lg bg-white border border-[#D4896B]/20 text-[#4A4A4A] hover:bg-[#F9F5F0] transition-colors text-xs font-medium flex items-center justify-center gap-1">
-                                                <ClipboardCheck className="w-3 h-3" />
-                                                Quiz
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* View Button */}
-                                    <button className="w-full mt-4 py-2 rounded-lg bg-[#D4896B] text-white hover:bg-[#B86F54] transition-colors text-sm font-medium flex items-center justify-center gap-2">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        </svg>
-                                        View
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column - 2/3 width */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Recent Lectures */}
+                    <SectionCard title="Recent Lectures" action="View All">
+                        <div className="space-y-3">
+                            {lectures.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <BookOpen className="w-12 h-12 text-[#6C757D] mx-auto mb-3 opacity-50" />
+                                    <p className="text-sm text-[#6C757D]">No lectures yet</p>
+                                    <button
+                                        onClick={() => handleNavigation('/teacher/lectures')}
+                                        className="mt-4 text-[#2D7FF9] text-sm font-semibold hover:underline"
+                                    >
+                                        Create your first lecture
                                     </button>
                                 </div>
-                            </div>
-                        ))
-                    )}
+                            ) : (
+                                lectures.slice(0, 5).map((lecture) => (
+                                    <ListCard
+                                        key={lecture.id}
+                                        title={lecture.title}
+                                        subtitle={`${lecture.chapter || 'General'} • ${lecture.topic || 'No topic'}`}
+                                        status={lecture.status}
+                                        onClick={() => handleNavigation(`/teacher/lectures/${lecture.id}`)}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    </SectionCard>
+
+                    {/* Pending Tasks */}
+                    <SectionCard title="Pending Tasks" action="All">
+                        <div className="space-y-3">
+                            <p className="text-sm text-[#6C757D] text-center py-4">
+                                No pending tasks
+                            </p>
+                        </div>
+                    </SectionCard>
+                </div>
+
+                {/* Right Column - 1/3 width */}
+                <div className="space-y-6">
+                    {/* Quick Actions */}
+                    <SectionCard title="Quick Actions">
+                        <div className="space-y-3">
+                            <ActionButton
+                                icon={BookOpen}
+                                label="Manage Lectures"
+                                onClick={() => handleNavigation('/teacher/lectures')}
+                                variant="primary"
+                            />
+                            <ActionButton
+                                icon={Sparkles}
+                                label="AI Features"
+                                onClick={() => handleNavigation('/teacher/ai-features')}
+                                variant="primary"
+                            />
+                            <ActionButton
+                                icon={FileText}
+                                label="Create Assignment"
+                                onClick={() => handleNavigation('/teacher/assignments')}
+                                variant="primary"
+                            />
+                            <ActionButton
+                                icon={Users}
+                                label="View Students"
+                                onClick={() => handleNavigation('/teacher/students')}
+                                variant="secondary"
+                            />
+                        </div>
+                    </SectionCard>
+
+                    {/* Today's Schedule */}
+                    <SectionCard title="Today's Schedule">
+                        <p className="text-sm text-[#6C757D] text-center py-8">
+                            No classes scheduled today
+                        </p>
+                    </SectionCard>
                 </div>
             </div>
         </div>
