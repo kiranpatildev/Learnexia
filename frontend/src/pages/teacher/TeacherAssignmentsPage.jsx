@@ -170,7 +170,7 @@ export function TeacherAssignmentsPage() {
                 transition={{ delay: 0.1 }}
                 className="grid grid-cols-1 md:grid-cols-4 gap-4"
             >
-                <Card className="glass-card border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="bg-white border border-slate-200 shadow-sm">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
@@ -184,7 +184,7 @@ export function TeacherAssignmentsPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="glass-card border-0">
+                <Card className="bg-white border border-slate-200 shadow-sm">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
@@ -198,7 +198,7 @@ export function TeacherAssignmentsPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="glass-card border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="bg-white border border-slate-200 shadow-sm">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
@@ -212,7 +212,7 @@ export function TeacherAssignmentsPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="glass-card border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="bg-white border border-slate-200 shadow-sm">
                     <CardContent className="pt-6">
                         <div className="flex items-center gap-3">
                             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
@@ -277,7 +277,7 @@ export function TeacherAssignmentsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
             >
-                <Card className="glass-card border-0 bg-white/80 backdrop-blur-sm">
+                <Card className="bg-white border border-slate-200 shadow-sm">
                     <CardContent className="pt-6">
                         {loading ? (
                             <div className="text-center py-12">

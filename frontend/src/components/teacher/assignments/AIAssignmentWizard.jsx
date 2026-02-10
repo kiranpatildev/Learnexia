@@ -306,10 +306,10 @@ function StepSelectLecture({ lectures, formData, setFormData, onNext }) {
                                     }
                                 }}
                                 className={`p-4 rounded-xl transition-all ${!hasTranscript
-                                        ? 'opacity-50 cursor-not-allowed bg-slate-50 border border-dashed border-slate-300'
-                                        : formData.lecture_id === lecture.id
-                                            ? 'cursor-pointer bg-[#2D7FF9]/10 border-2 border-[#2D7FF9]'
-                                            : 'cursor-pointer bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                                    ? 'opacity-50 cursor-not-allowed bg-slate-50 border border-dashed border-slate-300'
+                                    : formData.lecture_id === lecture.id
+                                        ? 'cursor-pointer bg-[#2D7FF9]/10 border-2 border-[#2D7FF9]'
+                                        : 'cursor-pointer bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300'
                                     }`}
                             >
                                 <div className="flex items-start justify-between">
@@ -356,21 +356,21 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
             className="space-y-6"
         >
             <div>
-                <h3 className="text-lg font-semibold text-white mb-2">
+                <h3 className="text-lg font-semibold text-[#2C3E50] mb-2">
                     Configure Assignment
                 </h3>
-                <p className="text-sm text-white/60">
+                <p className="text-sm text-[#6C757D]">
                     Customize the assignment settings
                 </p>
             </div>
 
             {/* Selected Lecture Info */}
-            <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20">
+            <div className="p-4 rounded-xl bg-[#8B5CF6]/10 border border-[#8B5CF6]/20">
                 <div className="flex items-center gap-3">
-                    <BookOpen className="w-5 h-5 text-violet-400" />
+                    <BookOpen className="w-5 h-5 text-[#8B5CF6]" />
                     <div>
-                        <p className="text-sm text-white/60">Selected Lecture</p>
-                        <p className="font-medium text-white">{selectedLecture?.title}</p>
+                        <p className="text-sm text-[#6C757D]">Selected Lecture</p>
+                        <p className="font-medium text-[#2C3E50]">{selectedLecture?.title}</p>
                     </div>
                 </div>
             </div>
@@ -378,20 +378,20 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Title */}
                 <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-white/80 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Assignment Title *
                     </label>
                     <Input
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         placeholder="e.g., IoT Fundamentals Assignment"
-                        className="bg-white/5 border-white/10 text-white placeholder:text-white/30"
+                        className="bg-white border-slate-300 text-[#2C3E50] placeholder:text-[#9CA3AF]"
                     />
                 </div>
 
                 {/* Description */}
                 <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-white/80 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Description
                     </label>
                     <textarea
@@ -399,19 +399,19 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         placeholder="Brief description of the assignment..."
                         rows={3}
-                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-[#2C3E50] placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                     />
                 </div>
 
                 {/* Classroom */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Classroom *
                     </label>
                     <select
                         value={formData.classroom}
                         onChange={(e) => setFormData({ ...formData, classroom: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-[#2C3E50] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                     >
                         <option value="">Select classroom</option>
                         {classrooms.map((classroom) => (
@@ -424,13 +424,13 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
 
                 {/* Difficulty */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Difficulty Level
                     </label>
                     <select
                         value={formData.difficulty}
                         onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-[#2C3E50] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                     >
                         <option value="easy">Easy</option>
                         <option value="medium">Medium</option>
@@ -440,7 +440,7 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
 
                 {/* Number of Questions */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Number of Questions
                     </label>
                     <Input
@@ -449,19 +449,19 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
                         max="10"
                         value={formData.num_questions}
                         onChange={(e) => setFormData({ ...formData, num_questions: parseInt(e.target.value) })}
-                        className="bg-white border-gray-300 text-gray-900"
+                        className="bg-white border-slate-300 text-[#2C3E50]"
                     />
                 </div>
 
                 {/* Format */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Assignment Format
                     </label>
                     <select
                         value={formData.assignment_format}
                         onChange={(e) => setFormData({ ...formData, assignment_format: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-[#2C3E50] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                     >
                         <option value="short_answer">Short Answer</option>
                         <option value="essay">Essay</option>
@@ -471,7 +471,7 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
 
                 {/* Total Marks */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Total Marks
                     </label>
                     <Input
@@ -479,30 +479,30 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
                         min="1"
                         value={formData.total_marks}
                         onChange={(e) => setFormData({ ...formData, total_marks: parseInt(e.target.value) })}
-                        className="bg-white border-gray-300 text-gray-900"
+                        className="bg-white border-slate-300 text-[#2C3E50]"
                     />
                 </div>
 
                 {/* Due Date */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Due Date *
                     </label>
                     <Input
                         type="datetime-local"
                         value={formData.due_date}
                         onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                        className="bg-white border-gray-300 text-gray-900"
+                        className="bg-white border-slate-300 text-[#2C3E50]"
                     />
                 </div>
 
                 {/* Submission Type */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Submission Type
                     </label>
                     <div className="flex gap-4">
-                        <label className={`flex-1 flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-all ${formData.submission_type === 'online' ? 'bg-violet-500/20 border-violet-500 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>
+                        <label className={`flex-1 flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-all ${formData.submission_type === 'online' ? 'bg-[#8B5CF6]/10 border-[#8B5CF6] text-[#8B5CF6]' : 'bg-slate-50 border-slate-300 text-[#6C757D] hover:bg-slate-100'}`}>
                             <input
                                 type="radio"
                                 name="submission_type"
@@ -514,7 +514,7 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
                             <FileText className="w-4 h-4 mr-2" />
                             Online
                         </label>
-                        <label className={`flex-1 flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-all ${formData.submission_type === 'offline' ? 'bg-violet-500/20 border-violet-500 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>
+                        <label className={`flex-1 flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-all ${formData.submission_type === 'offline' ? 'bg-[#8B5CF6]/10 border-[#8B5CF6] text-[#8B5CF6]' : 'bg-slate-50 border-slate-300 text-[#6C757D] hover:bg-slate-100'}`}>
                             <input
                                 type="radio"
                                 name="submission_type"
@@ -531,13 +531,13 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
 
                 {/* Grading Method */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[#2C3E50] mb-2">
                         Grading Method
                     </label>
                     <select
                         value={formData.grading_method}
                         onChange={(e) => setFormData({ ...formData, grading_method: e.target.value })}
-                        className="w-full px-3 py-2 rounded-lg bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500"
+                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 text-[#2C3E50] focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]"
                     >
                         <option value="manual">Manual Grading</option>
                         <option value="ai_assisted">AI-Assisted</option>
@@ -549,10 +549,10 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
             {/* AI Estimation */}
             <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
                 <div className="flex items-center gap-4">
-                    <Zap className="w-5 h-5 text-emerald-400" />
+                    <Zap className="w-5 h-5 text-emerald-600" />
                     <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-900">AI Generation Estimate</p>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-600">
+                        <p className="text-sm font-medium text-[#2C3E50]">AI Generation Estimate</p>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-[#6C757D]">
                             <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
                                 ~{estimatedTime}s
@@ -568,7 +568,7 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
                 <Button
                     variant="ghost"
                     onClick={onBack}
-                    className="text-white/70 hover:text-white hover:bg-white/10"
+                    className="text-[#6C757D] hover:text-[#2C3E50] hover:bg-slate-100"
                 >
                     <ChevronLeft className="w-4 h-4 mr-2" />
                     Back
@@ -576,7 +576,7 @@ function StepConfigure({ formData, setFormData, classrooms, selectedLecture, gen
                 <Button
                     onClick={onGenerate}
                     disabled={generating || !formData.title || !formData.classroom || !formData.due_date}
-                    className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600"
+                    className="bg-gradient-to-r from-[#8B5CF6] to-[#EC4899] hover:from-[#7C3AED] hover:to-[#DB2777]"
                 >
                     {generating ? (
                         <>
